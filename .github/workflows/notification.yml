@@ -12,7 +12,10 @@ on:
 
 jobs:
   notifications:
-    uses: ${{ vars.REUSABLE_WORKFLOW_REF }}
+    strategy:
+      matrix:
+        reusable_workflow_ref: ["${{ vars.REUSABLE_WORKFLOW_REF }}"]
+    uses: ${{ matrix.reusable_workflow_ref }}
     with:
       event_name: ${{ github.event_name }}
       actor: ${{ github.actor }}
