@@ -9,13 +9,9 @@ on:
   delete:
     branches:
       - "**"
-
 jobs:
   notifications:
-    strategy:
-      matrix:
-        reusable_workflow_ref: ["${{ vars.REUSABLE_WORKFLOW_REF }}"]
-    uses: ${{ matrix.reusable_workflow_ref }}
+    uses: SunLeang/IP_script/.github/workflows/greetings.yml@main
     with:
       event_name: ${{ github.event_name }}
       actor: ${{ github.actor }}
@@ -25,6 +21,7 @@ jobs:
     secrets:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
     permissions:
       contents: read
       actions: read
