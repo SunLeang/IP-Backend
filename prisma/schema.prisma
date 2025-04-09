@@ -1,0 +1,302 @@
+// schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SystemRole {
+  SUPER_ADMIN
+  ADMIN
+  USER
+}
+
+enum CurrentRole {
+  ATTENDEE
+  VOLUNTEER
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+}
+
+enum AttendanceStatus {
+  JOINED
+  LEFT_EARLY
+  NO_SHOW
+}
+
+enum CommentStatus {
+  ACTIVE
+  DELETED
+}
+
+enum NotificationType {
+  APPLICATION_UPDATE
+  EVENT_REMINDER
+  TASK_ASSIGNMENT
+  SYSTEM_ALERT
+  ANNOUNCEMENT
+}
+
+enum VolunteerStatus {
+  APPROVED
+  REMOVED
+  PENDING_REVIEW
+}
+
+model User {
+  id          String       @id @default(uuid())
+  email       String       @unique
+  username    String?      @unique
+  password    String
+  fullName    String
+  gender      String?
+  age         Int?
+  org         String?
+  systemRole  SystemRole   @default(USER)
+  currentRole CurrentRole? @default(ATTENDEE)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+
+  // Relationships
+  organizedEvents Event[]                @relation("OrganizedEvents")
+  applications    VolunteerApplication[]
+  interests       EventInterest[]
+  attendances     EventAttendance[]
+  volunteerRoles  EventVolunteer[]
+  comments        CommentRating[]
+  notifications   Notification[]
+  certificates    Certificate[]
+  assignedTasks   TaskAssignment[]       @relation("AssignedTasks")
+  managedTasks    TaskAssignment[]       @relation("ManagedTasks")
+
+  @@index([systemRole])
+  @@index([email])
+  @@index([username])
+}
+
+model Event {
+  id            String      @id @default(uuid())
+  name          String
+  description   String
+  profileImage  String?
+  coverImage    String?
+  dateTime      DateTime
+  locationDesc  String
+  locationImage String?
+  status        EventStatus @default(DRAFT)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deletedAt     DateTime?
+
+  // Relationships
+  categoryId      String
+  category        EventCategory          @relation(fields: [categoryId], references: [id])
+  organizerId     String
+  organizer       User                   @relation("OrganizedEvents", fields: [organizerId], references: [id])
+  applications    VolunteerApplication[]
+  tasks           Task[]
+  announcements   Announcement[]
+  comments        CommentRating[]
+  interestedUsers EventInterest[]
+  attendingUsers  EventAttendance[]
+  volunteers      EventVolunteer[]
+  certificates    Certificate[]
+  notifications   Notification[]         @relation("NotificationEvent")
+
+  @@index([organizerId])
+  @@index([categoryId])
+  @@index([dateTime])
+}
+
+model EventCategory {
+  id     String  @id @default(uuid())
+  name   String  @unique
+  image  String?
+  events Event[]
+
+  @@index([name])
+}
+
+model VolunteerApplication {
+  id           String            @id @default(uuid())
+  whyVolunteer String
+  cvPath       String
+  status       ApplicationStatus @default(PENDING)
+  appliedAt    DateTime          @default(now())
+  processedAt  DateTime?
+
+  // Relationships
+  userId  String
+  user    User   @relation(fields: [userId], references: [id])
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  notifications Notification[] @relation("NotificationApplication")
+
+  @@unique([userId, eventId])
+  @@index([status])
+}
+
+model Task {
+  id          String     @id @default(uuid())
+  name        String
+  description String
+  status      TaskStatus @default(PENDING)
+  type        String
+  dueDate     DateTime
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relationships
+  eventId     String
+  event       Event            @relation(fields: [eventId], references: [id])
+  assignments TaskAssignment[]
+
+  @@index([dueDate])
+}
+
+model TaskAssignment {
+  id         String     @id @default(uuid())
+  status     TaskStatus @default(PENDING)
+  assignedAt DateTime   @default(now())
+
+  // Relationships
+  taskId       String
+  task         Task   @relation(fields: [taskId], references: [id])
+  volunteerId  String
+  volunteer    User   @relation("AssignedTasks", fields: [volunteerId], references: [id])
+  assignedById String
+  assignedBy   User   @relation("ManagedTasks", fields: [assignedById], references: [id])
+
+  @@index([status])
+}
+
+model Announcement {
+  id          String   @id @default(uuid())
+  title       String
+  image       String?
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  eventId       String
+  event         Event          @relation(fields: [eventId], references: [id])
+  notifications Notification[] @relation("NotificationAnnouncement")
+
+  @@index([createdAt])
+}
+
+model CommentRating {
+  id          String        @id @default(uuid())
+  commentText String
+  rating      Int
+  status      CommentStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relationships
+  userId  String
+  user    User   @relation(fields: [userId], references: [id])
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  @@index([createdAt])
+}
+
+model Certificate {
+  id       String   @id @default(uuid())
+  filePath String
+  issuedAt DateTime @default(now())
+
+  // Relationships
+  userId  String
+  user    User   @relation(fields: [userId], references: [id])
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  @@index([issuedAt])
+}
+
+model Notification {
+  id      String           @id @default(uuid())
+  type    NotificationType
+  message String
+  read    Boolean          @default(false)
+  sentAt  DateTime         @default(now())
+
+  // User relation
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  // Event relation (optional)
+  eventId String?
+  event   Event?  @relation(fields: [eventId], references: [id], name: "NotificationEvent")
+
+  // Application relation (optional)
+  applicationId String?
+  application   VolunteerApplication? @relation(fields: [applicationId], references: [id], name: "NotificationApplication")
+
+  // Announcement relation (optional)
+  announcementId String?
+  announcement   Announcement? @relation(fields: [announcementId], references: [id], name: "NotificationAnnouncement")
+
+  @@index([sentAt])
+}
+
+// Junction Tables
+model EventInterest {
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  eventId      String
+  event        Event    @relation(fields: [eventId], references: [id])
+  interestedAt DateTime @default(now())
+
+  @@id([userId, eventId])
+  @@index([interestedAt])
+}
+
+model EventAttendance {
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  eventId   String
+  event     Event            @relation(fields: [eventId], references: [id])
+  status    AttendanceStatus @default(JOINED)
+  updatedAt DateTime         @updatedAt
+
+  @@id([userId, eventId])
+  @@index([status])
+}
+
+model EventVolunteer {
+  userId     String
+  user       User            @relation(fields: [userId], references: [id])
+  eventId    String
+  event      Event           @relation(fields: [eventId], references: [id])
+  status     VolunteerStatus @default(PENDING_REVIEW)
+  approvedAt DateTime?
+
+  @@id([userId, eventId])
+  @@index([status])
+}
