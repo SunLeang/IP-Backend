@@ -5,6 +5,7 @@ import { ConfigModule } from './app/core/config/config.module';
 import { PrismaModule } from './app/prisma/prisma.module';
 import { UserModule } from './app/modules/user/user.module';
 import { AuthModule } from './app/modules/auth/auth.module';
+import { EventModule } from './app/modules/event/event.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { AuthModule } from './app/modules/auth/auth.module';
     PrismaModule,
     UserModule,
     AuthModule,
+    EventModule,
   ],
   controllers: [AppController],
   providers: [AppService],
