@@ -1,35 +1,45 @@
-import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { ConfigModule } from './app/core/config/config.module';
-import { PrismaModule } from './app/prisma/prisma.module';
-import { UserModule } from './app/modules/user/user.module';
-import { AuthModule } from './app/modules/auth/auth.module';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { AuthModule } from 'src/app/modules/auth/auth.module';
+import { UserModule } from 'src/app/modules/user/user.module';
+import { PrismaModule } from 'src/app/prisma/prisma.module';
+import { AuthMiddleware } from 'src/app/core/middleware/auth.middleware';
+import { JwtAuthGuard } from 'src/app/modules/auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/app/core/guards/roles.guard';
+import { EventController } from './app/modules/event/event.controller';
+import { EventService } from './app/modules/event/event.service';
 import { EventModule } from './app/modules/event/event.module';
 import { CategoryModule } from './app/modules/event/category/category.module';
-import { FileUploadModule } from './app/modules/shared/file-upload/file-upload.module';
-import { NotificationModule } from './app/modules/notification/notification.module';
-import { APP_GUARD } from '@nestjs/core';
-import { RolesGuard } from './app/core/guards/roles.guard';
 
 @Module({
   imports: [
-    ConfigModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     PrismaModule,
-    UserModule,
     AuthModule,
+    UserModule,
     EventModule,
     CategoryModule,
-    FileUploadModule,
-    NotificationModule,
   ],
-  controllers: [AppController],
   providers: [
-    AppService,
+    // Register JwtAuthGuard as a global guard
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    // Register RolesGuard as a global guard
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
     },
+    EventService,
   ],
+  controllers: [EventController],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(AuthMiddleware).forRoutes('*');
+  }
+}

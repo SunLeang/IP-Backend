@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
-import { EventCategoryService } from './category.service';
-import { EventCategoryController } from './category.controller';
-import { PrismaModule } from 'src/app/prisma/prisma.module';
+import { CategoryService } from './category.service';
+import { CategoryController } from './category.controller';
+import { PrismaModule } from '../../../prisma/prisma.module';
 
 @Module({
   imports: [PrismaModule],
-  controllers: [EventCategoryController],
-  providers: [EventCategoryService],
-  exports: [EventCategoryService],
+  controllers: [CategoryController],
+  providers: [CategoryService],
+  exports: [CategoryService],
 })
 export class CategoryModule {}

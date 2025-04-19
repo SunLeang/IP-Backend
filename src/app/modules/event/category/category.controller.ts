@@ -1,73 +1,54 @@
-import { 
-    Controller, 
-    Get, 
-    Post, 
-    Body, 
-    Patch, 
-    Param, 
-    Delete, 
+import {
+    Controller,
+    Get,
+    Post,
+    Body,
+    Patch,
+    Param,
+    Delete,
     UseGuards,
-    ParseUUIDPipe
   } from '@nestjs/common';
-  import { EventCategoryService } from './category.service';
-  import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-  import { CreateEventCategoryDto, UpdateEventCategoryDto } from './dto/event-category.dto';
-  import { EventCategory } from '@prisma/client';
-  import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+  import { CategoryService } from './category.service';
+  import { CreateCategoryDto } from './dto/create-category.dto';
+  import { UpdateCategoryDto } from './dto/update-category.dto';
+  import { JwtAuthGuard } from 'src/app/modules/auth/guards/jwt-auth.guard';
+  import { RolesGuard } from 'src/app/core/guards/roles.guard';
+  import { Roles } from 'src/app/core/decorators/roles.decorator';
+  import { Public } from 'src/app/core/decorators/public.decorator';
+  import { SystemRole } from '@prisma/client';
   
-  @ApiTags('event-categories')
   @Controller('event-categories')
-  export class EventCategoryController {
-    constructor(private readonly eventCategoryService: EventCategoryService) {}
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  export class CategoryController {
+    constructor(private readonly categoryService: CategoryService) {}
   
-    @ApiOperation({ summary: 'Get all event categories' })
-    @ApiResponse({ status: 200, description: 'Return all event categories' })
-    @Get()
-    async findAll(): Promise<EventCategory[]> {
-      return this.eventCategoryService.findAll();
-    }
-  
-    @ApiOperation({ summary: 'Get an event category by id' })
-    @ApiResponse({ status: 200, description: 'Return an event category by id' })
-    @ApiResponse({ status: 404, description: 'Event category not found' })
-    @Get(':id')
-    async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<EventCategory> {
-      return this.eventCategoryService.findOne(id);
-    }
-  
-    @ApiOperation({ summary: 'Create a new event category' })
-    @ApiResponse({ status: 201, description: 'The event category has been successfully created' })
-    @ApiResponse({ status: 400, description: 'Invalid input' })
-    @ApiResponse({ status: 409, description: 'Category with this name already exists' })
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
     @Post()
-    async create(@Body() createEventCategoryDto: CreateEventCategoryDto): Promise<EventCategory> {
-      return this.eventCategoryService.create(createEventCategoryDto);
+    @Roles(SystemRole.ADMIN, SystemRole.SUPER_ADMIN)
+    create(@Body() createCategoryDto: CreateCategoryDto) {
+      return this.categoryService.create(createCategoryDto);
     }
   
-    @ApiOperation({ summary: 'Update an event category' })
-    @ApiResponse({ status: 200, description: 'The event category has been successfully updated' })
-    @ApiResponse({ status: 404, description: 'Event category not found' })
-    @ApiResponse({ status: 409, description: 'Category with this name already exists' })
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @Get()
+    @Public()
+    findAll() {
+      return this.categoryService.findAll();
+    }
+  
+    @Get(':id')
+    @Public()
+    findOne(@Param('id') id: string) {
+      return this.categoryService.findOne(id);
+    }
+  
     @Patch(':id')
-    async update(
-      @Param('id', ParseUUIDPipe) id: string,
-      @Body() updateEventCategoryDto: UpdateEventCategoryDto,
-    ): Promise<EventCategory> {
-      return this.eventCategoryService.update(id, updateEventCategoryDto);
+    @Roles(SystemRole.ADMIN, SystemRole.SUPER_ADMIN)
+    update(@Param('id') id: string, @Body() updateCategoryDto: UpdateCategoryDto) {
+      return this.categoryService.update(id, updateCategoryDto);
     }
   
-    @ApiOperation({ summary: 'Delete an event category' })
-    @ApiResponse({ status: 200, description: 'The event category has been successfully deleted' })
-    @ApiResponse({ status: 404, description: 'Event category not found' })
-    @ApiResponse({ status: 409, description: 'Cannot delete category that is being used by events' })
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
     @Delete(':id')
-    async remove(@Param('id', ParseUUIDPipe) id: string): Promise<EventCategory> {
-      return this.eventCategoryService.remove(id);
+    @Roles(SystemRole.ADMIN, SystemRole.SUPER_ADMIN)
+    remove(@Param('id') id: string) {
+      return this.categoryService.remove(id);
     }
   }
