@@ -303,4 +303,63 @@ export class EventService {
       data: { acceptingVolunteers },
     });
   }
+
+  // Get all attendees for an event
+  async getEventAttendees(id: string) {
+    const event = await this.prisma.event.findUnique({
+      where: { id, deletedAt: null },
+    });
+
+    if (!event) {
+      throw new NotFoundException(`Event with ID ${id} not found`);
+    }
+
+    return this.prisma.eventAttendance.findMany({
+      where: { eventId: id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            gender: true,
+            age: true,
+            org: true,
+            currentRole: true,
+          },
+        },
+      },
+    });
+  }
+
+  // Get all volunteers for an event
+  async getEventVolunteers(id: string) {
+    const event = await this.prisma.event.findUnique({
+      where: { id, deletedAt: null },
+    });
+
+    if (!event) {
+      throw new NotFoundException(`Event with ID ${id} not found`);
+    }
+
+    return this.prisma.eventVolunteer.findMany({
+      where: {
+        eventId: id,
+        status: 'APPROVED',
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            gender: true,
+            age: true,
+            org: true,
+            currentRole: true,
+          },
+        },
+      },
+    });
+  }
 }

@@ -21,7 +21,7 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get()
-  @Roles(SystemRole.ADMIN, SystemRole.SUPER_ADMIN)
+  @Roles(SystemRole.SUPER_ADMIN)
   findAll() {
     return this.userService.findAll();
   }

@@ -137,4 +137,18 @@ export class EventController {
       },
     };
   }
+
+  // Get attendees for an event
+  @Get(':id/attendees')
+  @Roles(SystemRole.ADMIN, SystemRole.SUPER_ADMIN)
+  async getEventAttendees(@Param('id') id: string) {
+    return this.eventService.getEventAttendees(id);
+  }
+
+  // Get volunteers for an event
+  @Get(':id/volunteers')
+  @Roles(SystemRole.ADMIN, SystemRole.SUPER_ADMIN)
+  async getEventVolunteers(@Param('id') id: string) {
+    return this.eventService.getEventVolunteers(id);
+  }
 }
