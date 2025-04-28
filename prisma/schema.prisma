@@ -106,6 +106,7 @@ model Event {
   locationDesc  String
   locationImage String?
   status        EventStatus @default(DRAFT)
+  acceptingVolunteers Boolean @default(false)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   deletedAt     DateTime?

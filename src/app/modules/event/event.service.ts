@@ -276,4 +276,31 @@ export class EventService {
       },
     });
   }
+
+  async toggleVolunteerApplications(
+    id: string,
+    acceptingVolunteers: boolean,
+    userId: string,
+    userRole: SystemRole,
+  ) {
+    const event = await this.prisma.event.findUnique({
+      where: { id, deletedAt: null },
+    });
+
+    if (!event) {
+      throw new NotFoundException(`Event with ID ${id} not found`);
+    }
+
+    // Only admins or event organizer can update this setting
+    if (event.organizerId !== userId && userRole === SystemRole.USER) {
+      throw new ForbiddenException(
+        'You can only update events that you organize',
+      );
+    }
+
+    return this.prisma.event.update({
+      where: { id },
+      data: { acceptingVolunteers },
+    });
+  }
 }

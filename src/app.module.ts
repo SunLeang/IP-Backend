@@ -11,6 +11,7 @@ import { EventController } from './app/modules/event/event.controller';
 import { EventService } from './app/modules/event/event.service';
 import { EventModule } from './app/modules/event/event.module';
 import { CategoryModule } from './app/modules/event/category/category.module';
+import { VolunteerModule } from './app/modules/event/volunteer/volunteer.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { CategoryModule } from './app/modules/event/category/category.module';
     UserModule,
     EventModule,
     CategoryModule,
+    VolunteerModule,
   ],
   providers: [
     // Register JwtAuthGuard as a global guard

@@ -78,6 +78,22 @@ export class EventController {
     return this.eventService.updateStatus(id, status, userId, userRole);
   }
 
+  @Patch(':id/volunteers/toggle')
+  @Roles(SystemRole.ADMIN, SystemRole.SUPER_ADMIN)
+  async toggleVolunteerApplications(
+    @Param('id') id: string,
+    @Body('acceptingVolunteers') acceptingVolunteers: boolean,
+    @GetUser('id') userId: string,
+    @GetUser('systemRole') userRole: SystemRole,
+  ) {
+    return this.eventService.toggleVolunteerApplications(
+      id,
+      acceptingVolunteers,
+      userId,
+      userRole,
+    );
+  }
+
   @Get('organizer/:organizerId')
   getEventsByOrganizer(@Param('organizerId') organizerId: string) {
     return this.eventService.getEventsByOrganizer(organizerId);

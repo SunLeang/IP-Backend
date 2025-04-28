@@ -1,4 +1,12 @@
-import { IsNotEmpty, IsOptional, IsString, IsEnum, IsDate, IsUUID } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsEnum,
+  IsDate,
+  IsUUID,
+  IsBoolean,
+} from 'class-validator';
 import { EventStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 
@@ -39,4 +47,8 @@ export class CreateEventDto {
   @IsUUID()
   @IsNotEmpty()
   categoryId: string;
+
+  @IsBoolean()
+  @IsOptional()
+  acceptingVolunteers?: boolean = false;
 }
