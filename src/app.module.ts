@@ -12,7 +12,7 @@ import { EventService } from './app/modules/event/event.service';
 import { EventModule } from './app/modules/event/event.module';
 import { CategoryModule } from './app/modules/event/category/category.module';
 import { VolunteerModule } from './app/modules/event/volunteer/volunteer.module';
-
+import { CommentRatingModule } from './app/modules/event/comment_rating/comment-rating.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -24,6 +24,7 @@ import { VolunteerModule } from './app/modules/event/volunteer/volunteer.module'
     EventModule,
     CategoryModule,
     VolunteerModule,
+    CommentRatingModule,
   ],
   providers: [
     // Register JwtAuthGuard as a global guard
