@@ -3,16 +3,16 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { PrismaService } from '../src/app/prisma/services/prisma.service';
 import { SystemRole, CurrentRole, EventStatus } from '@prisma/client';
-import * as bodyParser from 'body-parser'; // Add this import
+import * as bodyParser from 'body-parser';
 
-// Create a mock module for testing
+// Create a mock module for testing with updated organizer permissions
 class MockCommentRatingController {
   create(body, user) {
     return {
       id: 'mock-comment-id',
       eventId: body.eventId,
-      commentText: body.commentText, // Make sure this is explicitly included
-      rating: body.rating, // Make sure this is explicitly included
+      commentText: body.commentText,
+      rating: body.rating,
       userId: user.id,
       status: 'ACTIVE',
       createdAt: new Date(),
@@ -67,27 +67,51 @@ class MockCommentRatingController {
       id,
       commentText: 'This was an excellent event!',
       rating: 5,
+      userId: 'user-id',
       user: { id: 'user-id', fullName: 'Test User' },
-      event: { id: 'event-id', name: 'Test Event' },
+      event: {
+        id: 'event-id',
+        name: 'Test Event',
+        organizerId: 'organizer-id',
+      },
     };
   }
 
+  // Updated to check for event organizer permissions
   update(id, updateDto, user) {
-    if (user.id !== 'user-id' && user.systemRole === SystemRole.USER) {
+    // Get the comment to check ownership and event organizer
+    const comment = this.findOne(id);
+
+    // Check if user is the comment owner or the event organizer
+    const isCommentOwner = comment.userId === user.id;
+    const isEventOrganizer = comment.event.organizerId === user.id;
+
+    if (!isCommentOwner && !isEventOrganizer) {
       throw new Error('Forbidden');
     }
+
     return {
       id,
-      commentText: updateDto.commentText, // Make sure this is explicitly included
-      rating: updateDto.rating, // Make sure this is explicitly included
-      userId: user.id,
+      commentText: updateDto.commentText,
+      rating: updateDto.rating,
+      userId: comment.userId,
+      updatedBy: user.id,
     };
   }
 
+  // Updated to check for event organizer permissions
   remove(id, user) {
-    if (user.id !== 'user-id' && user.systemRole === SystemRole.USER) {
+    // Get the comment to check ownership and event organizer
+    const comment = this.findOne(id);
+
+    // Check if user is the comment owner or the event organizer
+    const isCommentOwner = comment.userId === user.id;
+    const isEventOrganizer = comment.event.organizerId === user.id;
+
+    if (!isCommentOwner && !isEventOrganizer) {
       throw new Error('Forbidden');
     }
+
     return {
       id,
       status: 'DELETED',
@@ -129,12 +153,14 @@ describe('Comment Rating Module (e2e)', () => {
   // Tokens for different user types
   const userToken = 'mock_user_token';
   const adminToken = 'mock_admin_token';
+  const organizerToken = 'mock_organizer_token';
   const superAdminToken = 'mock_superadmin_token';
 
   // Test data IDs
   const eventId = 'mock-event-id';
   const userId = 'user-id';
   const adminId = 'admin-id';
+  const organizerId = 'organizer-id';
   const commentId = 'mock-comment-id';
 
   beforeAll(async () => {
@@ -164,27 +190,40 @@ describe('Comment Rating Module (e2e)', () => {
     // Get the Express instance and add routes manually
     const expressInstance = app.getHttpAdapter().getInstance();
 
-    // Add body parser middleware (this is crucial for parsing JSON requests)
+    // Add body parser middleware
     expressInstance.use(bodyParser.json());
     expressInstance.use(bodyParser.urlencoded({ extended: true }));
 
     // Setup middleware to inject user info
     expressInstance.use((req, res, next) => {
-      // Add debug logging to see what's coming in
-      console.log('Request body:', req.body);
+      // Determine user ID and role from token
+      if (req.headers.authorization?.includes('organizer')) {
+        req.user = {
+          id: organizerId,
+          systemRole: SystemRole.ADMIN,
+        };
+      } else if (req.headers.authorization?.includes('admin')) {
+        req.user = {
+          id: adminId,
+          systemRole: SystemRole.ADMIN,
+        };
+      } else if (req.headers.authorization?.includes('superadmin')) {
+        req.user = {
+          id: 'superadmin-id',
+          systemRole: SystemRole.SUPER_ADMIN,
+        };
+      } else {
+        req.user = {
+          id: userId,
+          systemRole: SystemRole.USER,
+        };
+      }
 
-      req.user = {
-        id: userId,
-        systemRole: req.headers.authorization?.includes('admin')
-          ? SystemRole.ADMIN
-          : req.headers.authorization?.includes('superadmin')
-            ? SystemRole.SUPER_ADMIN
-            : SystemRole.USER,
-      };
+      console.log('Request body:', req.body);
       next();
     });
 
-    // Setup routes with Express
+    // Express routes remain mostly the same
     expressInstance.post('/comments-ratings', (req, res) => {
       try {
         console.log('POST request body:', req.body);
@@ -351,7 +390,7 @@ describe('Comment Rating Module (e2e)', () => {
   });
 
   describe('PATCH /comments-ratings/:id', () => {
-    it('should update a comment as the owner', async () => {
+    it('should allow comment owners to update their own comments', async () => {
       const updateDto = {
         commentText: 'Updated: This was an amazing event!',
         rating: 5,
@@ -366,16 +405,61 @@ describe('Comment Rating Module (e2e)', () => {
       expect(response.body).toHaveProperty('id', commentId);
       expect(response.body.commentText).toBe(updateDto.commentText);
     });
+
+    it('should allow event organizers to update comments on their events', async () => {
+      const updateDto = {
+        commentText: 'Moderated by organizer',
+        rating: 4,
+        status: 'MODERATED',
+      };
+
+      const response = await request(app.getHttpServer())
+        .patch(`/comments-ratings/${commentId}`)
+        .set('Authorization', `Bearer ${organizerToken}`)
+        .send(updateDto)
+        .expect(200);
+
+      expect(response.body).toHaveProperty('id', commentId);
+    });
+
+    it("should NOT allow non-organizer admins to update comments they don't own", async () => {
+      const updateDto = {
+        commentText: "Trying to change someone else's comment",
+        rating: 3,
+      };
+
+      await request(app.getHttpServer())
+        .patch(`/comments-ratings/${commentId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(updateDto)
+        .expect(403);
+    });
   });
 
   describe('DELETE /comments-ratings/:id', () => {
-    it('should soft delete a comment', async () => {
+    it('should allow comment owners to delete their own comments', async () => {
       const response = await request(app.getHttpServer())
         .delete(`/comments-ratings/${commentId}`)
         .set('Authorization', `Bearer ${userToken}`)
         .expect(200);
 
       expect(response.body).toHaveProperty('status', 'DELETED');
+    });
+
+    it('should allow event organizers to delete comments on their events', async () => {
+      const response = await request(app.getHttpServer())
+        .delete(`/comments-ratings/${commentId}`)
+        .set('Authorization', `Bearer ${organizerToken}`)
+        .expect(200);
+
+      expect(response.body).toHaveProperty('status', 'DELETED');
+    });
+
+    it("should NOT allow non-organizer admins to delete comments they don't own", async () => {
+      await request(app.getHttpServer())
+        .delete(`/comments-ratings/${commentId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(403);
     });
   });
 });

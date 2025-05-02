@@ -247,30 +247,38 @@ export class CommentRatingService {
   ) {
     const commentRating = await this.prisma.commentRating.findUnique({
       where: { id },
+      include: {
+        event: true, // Include event to check organizer
+      },
     });
 
     if (!commentRating) {
       throw new NotFoundException(`Comment with ID ${id} not found`);
     }
 
-    // Check if the user is the owner of the comment or an admin
-    if (commentRating.userId !== userId && userRole === SystemRole.USER) {
+    // User can update if:
+    // 1. They are the comment owner OR
+    // 2. They are the organizer of the event
+    const isCommentOwner = commentRating.userId === userId;
+    const isEventOrganizer = commentRating.event.organizerId === userId;
+
+    if (!isCommentOwner && !isEventOrganizer) {
       throw new ForbiddenException(
-        'You can only update your own comments and ratings',
+        'You can only update your own comments or comments on events you organize',
       );
     }
 
     // Regular users can only update comment text and rating
     let updateData = {};
 
-    if (userRole === SystemRole.USER) {
+    if (!isEventOrganizer) {
       const { commentText, rating } = updateCommentRatingDto;
       updateData = {
         ...(commentText !== undefined && { commentText }),
         ...(rating !== undefined && { rating }),
       };
     } else {
-      // Admins can update everything including status
+      // Event organizers can update everything including status
       updateData = updateCommentRatingDto;
     }
 
@@ -301,16 +309,24 @@ export class CommentRatingService {
   async remove(id: string, userId: string, userRole: SystemRole) {
     const commentRating = await this.prisma.commentRating.findUnique({
       where: { id },
+      include: {
+        event: true, // Include event to check organizer
+      },
     });
 
     if (!commentRating) {
       throw new NotFoundException(`Comment with ID ${id} not found`);
     }
 
-    // Check if the user is the owner of the comment or an admin/super admin
-    if (commentRating.userId !== userId && userRole === SystemRole.USER) {
+    // User can delete if:
+    // 1. They are the comment owner OR
+    // 2. They are the organizer of the event
+    const isCommentOwner = commentRating.userId === userId;
+    const isEventOrganizer = commentRating.event.organizerId === userId;
+
+    if (!isCommentOwner && !isEventOrganizer) {
       throw new ForbiddenException(
-        'You can only delete your own comments and ratings',
+        'You can only delete your own comments or comments on events you organize',
       );
     }
 
