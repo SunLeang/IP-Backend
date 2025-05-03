@@ -280,12 +280,17 @@ model EventInterest {
 }
 
 model EventAttendance {
-  userId    String
-  user      User             @relation(fields: [userId], references: [id])
-  eventId   String
-  event     Event            @relation(fields: [eventId], references: [id])
-  status    AttendanceStatus @default(JOINED)
-  updatedAt DateTime         @updatedAt
+  userId        String
+  user          User             @relation(fields: [userId], references: [id])
+  eventId       String
+  event         Event            @relation(fields: [eventId], references: [id])
+  status        AttendanceStatus @default(JOINED)
+  notes         String?
+  registeredBy  String?
+  registeredAt  DateTime         @default(now())
+  checkedInAt   DateTime?
+  updatedBy     String?
+  updatedAt     DateTime         @updatedAt
 
   @@id([userId, eventId])
   @@index([status])
