@@ -107,10 +107,10 @@ export class VolunteerService {
     });
 
     // Notify event organizer
-    await this.notificationService.createEventNotification(
-      event.organizerId,
+    await this.notificationService.createApplicationNotification(
+      event.organizerId, // Send to event organizer
+      application.id,
       event.id,
-      'APPLICATION_UPDATE',
       `New volunteer application from ${application.user.fullName}`,
     );
 
@@ -318,19 +318,19 @@ export class VolunteerService {
         },
       });
 
-      // Send notification to user
-      await this.notificationService.createEventNotification(
+      // Notify the applicant
+      await this.notificationService.createApplicationNotification(
         application.userId,
+        application.id,
         application.eventId,
-        'APPLICATION_UPDATE',
         `Your volunteer application for "${application.event.name}" has been approved!`,
       );
     } else if (updateDto.status === ApplicationStatus.REJECTED) {
-      // Send notification to user
-      await this.notificationService.createEventNotification(
+      // Notify the applicant
+      await this.notificationService.createApplicationNotification(
         application.userId,
+        application.id,
         application.eventId,
-        'APPLICATION_UPDATE',
         `Your volunteer application for "${application.event.name}" has been declined.`,
       );
     }

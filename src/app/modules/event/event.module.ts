@@ -9,9 +9,17 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { InterestService } from './interest/interest.service';
 import { InterestModule } from './interest/interest.module';
 import { CommentRatingModule } from './comment_rating/comment-rating.module';
+import { AnnouncementModule } from './announcement/announcement.module';
 
 @Module({
-  imports: [PrismaModule, CategoryModule, AttendanceModule, InterestModule, CommentRatingModule],
+  imports: [
+    PrismaModule,
+    CategoryModule,
+    AttendanceModule,
+    InterestModule,
+    CommentRatingModule,
+    AnnouncementModule,
+  ],
   controllers: [EventController, AttendanceController],
   providers: [EventService, AttendanceService, InterestService],
   exports: [EventService],
