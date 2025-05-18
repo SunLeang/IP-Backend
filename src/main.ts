@@ -14,7 +14,14 @@ async function bootstrap() {
   // Apply global middleware
   app.use(helmet());
   app.use(compression());
-  app.enableCors();
+
+  // Updated CORS configuration
+  app.enableCors({
+    origin: ['http://localhost:3000', 'http://localhost:3001'], // Add any frontend origins you need
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+    allowedHeaders: 'Content-Type, Accept, Authorization',
+  });
 
   // Global prefix for API routes
   app.setGlobalPrefix('api');
@@ -39,7 +46,7 @@ async function bootstrap() {
     .setVersion('1.0')
     .addBearerAuth()
     .build();
-    
+
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 

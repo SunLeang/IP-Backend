@@ -17,6 +17,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/app/core/guards/roles.guard';
 import { GetUser } from 'src/app/core/decorators/get-user.decorator';
 import { Roles } from 'src/app/core/decorators/roles.decorator';
+import { Public } from 'src/app/core/decorators/public.decorator';
 import { SystemRole } from '@prisma/client';
 import {
   ApiTags,
@@ -68,6 +69,7 @@ export class CommentRatingController {
    * GET EVENT COMMENTS RATINGS ENDPOINT
    **************************************/
   @Get('event/:eventId')
+  @Public()
   @ApiOperation({ summary: 'Get all comments and ratings for an event' })
   @ApiResponse({
     status: 200,
@@ -83,6 +85,7 @@ export class CommentRatingController {
    * GET EVENT RATING STATS ENDPOINT
    **************************************/
   @Get('event/:eventId/stats')
+  @Public()
   @ApiOperation({ summary: 'Get rating statistics for an event' })
   @ApiResponse({
     status: 200,
@@ -129,6 +132,7 @@ export class CommentRatingController {
    * GET ONE COMMENT RATING ENDPOINT
    **************************************/
   @Get(':id')
+  @Public()
   @ApiOperation({ summary: 'Get a specific comment and rating by ID' })
   @ApiResponse({ status: 200, description: 'Returns the comment and rating' })
   @ApiResponse({ status: 404, description: 'Comment not found' })
