@@ -72,6 +72,7 @@ model User {
   gender      String?
   age         Int?
   org         String?
+  profileImage String?
   systemRole  SystemRole   @default(USER)
   currentRole CurrentRole? @default(ATTENDEE)
   createdAt   DateTime     @default(now())
@@ -231,7 +232,7 @@ model Certificate {
   id       String   @id @default(uuid())
   filePath String
   issuedAt DateTime @default(now())
-
+  templateImage String?
   // Relationships
   userId  String
   user    User   @relation(fields: [userId], references: [id])
