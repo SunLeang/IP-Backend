@@ -1,49 +1,80 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-
-<head>
+  <head>
     <title>EVENTURA API</title>
-    <link rel="shortcut icon" href="logo.png" type="image/x-icon">
+    <link rel="shortcut icon" href="logo.png" type="image/x-icon" />
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-size: 16px;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-size: 16px;
+      }
 
-        body {
-            background-color: rgb(255, 245, 245);
-        }
+      body {
+        background-color: rgb(255, 245, 245);
+        overflow: hidden;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
 
-        .container {
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+      .border-container {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
 
-        }
+      .border-image {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        pointer-events: none;
+        object-fit: contain;
+      }
 
-        .text-4xl {
-            font-size: 2rem;
-        }
+      .container {
+        width: 80%;
+        height: 80%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 2;
+        position: relative;
+      }
 
-        .text-6xl {
-            font-size: 3rem;
-        }
+      .text-4xl {
+        font-size: 2.5rem;
+        text-align: center;
+      }
 
-        .mb-4 {
-            margin-bottom: 1rem;
-        }
+      .text-6xl {
+        font-size: 4rem;
+        text-align: center;
+      }
+
+      .mb-4 {
+        margin-bottom: 1.5rem;
+      }
     </style>
-</head>
+  </head>
 
-<body>
-    <div class="container">
+  <body>
+    <div class="border-container">
+      <img src="border.jpeg" class="border-image" alt="Border" />
+      <div class="container">
         <p class="text-6xl mb-4">EVENTURA API</p>
+        <p class="text-4xl mb-4">API NestJs V:1</p>
+      </div>
     </div>
-</body>
-
+  </body>
 </html>
