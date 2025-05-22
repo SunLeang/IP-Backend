@@ -27,11 +27,13 @@ export class AttendanceService {
    * - Event organizer
    * - Volunteer of the event
    * - Admin/SuperAdmin
+   * - Self-registration
    */
   private async checkPermission(
     eventId: string,
     userId: string,
     userRole: SystemRole,
+    targetUserId?: string,
   ): Promise<boolean> {
     // SuperAdmin always has access
     if (userRole === SystemRole.SUPER_ADMIN) {
@@ -55,6 +57,11 @@ export class AttendanceService {
 
     // Regular admin has access
     if (userRole === SystemRole.ADMIN) {
+      return true;
+    }
+
+    // Allow self-registration: user can register themselves
+    if (targetUserId && userId === targetUserId) {
       return true;
     }
 
@@ -92,6 +99,7 @@ export class AttendanceService {
       eventId,
       currentUserId,
       userRole,
+      userId,
     );
     if (!hasPermission) {
       throw new ForbiddenException(
