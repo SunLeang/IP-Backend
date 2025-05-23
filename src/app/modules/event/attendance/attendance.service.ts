@@ -483,14 +483,15 @@ export class AttendanceService {
       throw new NotFoundException(`Attendance record not found`);
     }
 
-    // For delete, only organizer and admin/superadmin can delete
+    // Allow user to delete their own attendance, or organizer/admin/superadmin
+    const isSelf = attendance.userId === currentUserId;
     const isOrganizer = attendance.event.organizerId === currentUserId;
     const isAdmin =
       userRole === SystemRole.ADMIN || userRole === SystemRole.SUPER_ADMIN;
 
-    if (!isOrganizer && !isAdmin) {
+    if (!isSelf && !isOrganizer && !isAdmin) {
       throw new ForbiddenException(
-        'Only event organizers and administrators can delete attendance records',
+        'You do not have permission to delete this attendance record',
       );
     }
 
