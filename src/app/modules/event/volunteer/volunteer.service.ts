@@ -292,11 +292,19 @@ export class VolunteerService {
 
     // If application is approved, update the user's currentRole and create EventVolunteer entry
     if (updateDto.status === ApplicationStatus.APPROVED) {
-      // Update user's currentRole to VOLUNTEER
-      await this.prisma.user.update({
-        where: { id: application.userId },
-        data: { currentRole: CurrentRole.VOLUNTEER },
-      });
+      console.log(
+        'Approving volunteer application for user:',
+        application.userId,
+      );
+      try {
+        await this.prisma.user.update({
+          where: { id: application.userId },
+          data: { currentRole: CurrentRole.VOLUNTEER },
+        });
+      } catch (e) {
+        console.error('Failed to update user currentRole:', e);
+        throw e;
+      }
 
       // Create or update EventVolunteer record
       await this.prisma.eventVolunteer.upsert({
@@ -429,5 +437,18 @@ export class VolunteerService {
     );
 
     return { success: true };
+  }
+
+  // Check if a user has an approved application
+  async hasApprovedApplication(userId: string): Promise<boolean> {
+    const approvedApplicationCount =
+      await this.prisma.volunteerApplication.count({
+        where: {
+          userId,
+          status: ApplicationStatus.APPROVED,
+        },
+      });
+
+    return approvedApplicationCount > 0;
   }
 }

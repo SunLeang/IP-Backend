@@ -1,9 +1,9 @@
 // src/app/modules/auth/services/auth.service.ts
-import { 
-  Injectable, 
-  UnauthorizedException, 
-  BadRequestException, 
-  ConflictException 
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -182,12 +182,52 @@ export class AuthService {
     return tokens;
   }
 
+  async generateTokensForUser(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Generate tokens
+    const tokens = await this.generateTokens(user.id, user.email);
+
+    // Save refresh token
+    await this.saveRefreshToken(user.id, tokens.refreshToken);
+
+    return tokens;
+  }
+
   private async generateTokens(userId: string, email: string) {
+    // First get the current user data including currentRole
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        currentRole: true,
+        systemRole: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Include currentRole and systemRole in the JWT payload
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(
         {
           sub: userId,
           email,
+          role: user.systemRole,
+          currentRole: user.currentRole,
         },
         {
           secret: this.configService.get<string>('JWT_SECRET'),
@@ -201,7 +241,8 @@ export class AuthService {
         },
         {
           secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-          expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRATION') || '7d',
+          expiresIn:
+            this.configService.get<string>('JWT_REFRESH_EXPIRATION') || '7d',
         },
       ),
     ]);
@@ -214,7 +255,8 @@ export class AuthService {
 
   private async saveRefreshToken(userId: string, token: string) {
     // Calculate expiry date
-    const refreshExpiration = this.configService.get<string>('JWT_REFRESH_EXPIRATION') || '7d';
+    const refreshExpiration =
+      this.configService.get<string>('JWT_REFRESH_EXPIRATION') || '7d';
     const expiresIn = this.parseExpirationTime(refreshExpiration);
     const expiresAt = new Date(Date.now() + expiresIn);
 

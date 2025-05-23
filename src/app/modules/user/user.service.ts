@@ -1,10 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/app/prisma/services/prisma.service';
 import { CurrentRole, SystemRole } from '@prisma/client';
+import { AuthService } from '../auth/auth.service';
+import { Inject, forwardRef } from '@nestjs/common';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => AuthService))
+    private readonly authService: AuthService,
+  ) {}
 
   async findAll() {
     return this.prisma.user.findMany({
@@ -50,7 +56,6 @@ export class UserService {
     return user;
   }
 
-  // src/app/modules/user/services/user.service.ts (continued)
   async update(id: string, updateData: any) {
     const user = await this.prisma.user.findUnique({
       where: { id },
@@ -143,5 +148,18 @@ export class UserService {
         updatedAt: true,
       },
     });
+  }
+
+  async switchRole(id: string, currentRole: CurrentRole) {
+    // First update the user's role
+    const user = await this.changeCurrentRole(id, currentRole);
+
+    // Then generate new tokens
+    const tokens = await this.authService.generateTokensForUser(id);
+
+    return {
+      user,
+      ...tokens,
+    };
   }
 }
