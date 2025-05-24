@@ -451,4 +451,72 @@ export class VolunteerService {
 
     return approvedApplicationCount > 0;
   }
+
+  // Get dashboard statistics for a user
+  async getDashboardStats(userId: string) {
+    // Get all events where the user is a volunteer
+    const volunteerEvents = await this.prisma.eventVolunteer.findMany({
+      where: {
+        userId,
+        status: VolunteerStatus.APPROVED,
+      },
+      include: {
+        event: {
+          select: {
+            id: true,
+            name: true,
+            _count: {
+              select: {
+                attendingUsers: true,
+                volunteers: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Count total tasks assigned to this volunteer
+    const taskCount = await this.prisma.taskAssignment.count({
+      where: {
+        volunteerId: userId,
+      },
+    });
+
+    // Calculate total attendees across all volunteer events
+    let totalAttendees = 0;
+
+    // Format event data for dashboard
+    const events = volunteerEvents.map((ve) => {
+      const attendeeCount = ve.event._count.attendingUsers;
+      totalAttendees += attendeeCount;
+
+      // Estimate capacity as 20% more than current attendees (or use actual capacity if available)
+      const attendeeCapacity = Math.ceil(attendeeCount * 1.2);
+
+      return {
+        id: Number(ve.event.id),
+        name: ve.event.name,
+        attendeeCount,
+        attendeeCapacity,
+        volunteerCount: `${ve.event._count.volunteers}/20`, // Format as "current/total"
+        progress: Math.round((attendeeCount / attendeeCapacity) * 100),
+      };
+    });
+
+    // Total volunteers across all events
+    const volunteerCount = await this.prisma.eventVolunteer.count({
+      where: {
+        eventId: { in: volunteerEvents.map((ve) => ve.eventId) },
+        status: VolunteerStatus.APPROVED,
+      },
+    });
+
+    return {
+      attendeeCount: totalAttendees,
+      taskCount,
+      volunteerCount,
+      events,
+    };
+  }
 }

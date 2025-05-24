@@ -135,4 +135,14 @@ export class VolunteerController {
       userRole,
     );
   }
+
+  @Get('dashboard/stats')
+  @ApiOperation({ summary: 'Get volunteer dashboard statistics' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return dashboard statistics for the volunteer',
+  })
+  async getDashboardStats(@GetUser('id') userId: string) {
+    return this.volunteerService.getDashboardStats(userId);
+  }
 }

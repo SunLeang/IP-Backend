@@ -13,8 +13,12 @@ import {
   HttpCode,
   HttpStatus,
   Request,
-  Response,
+  Response as NestResponse,
+  Res,
+  BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/app/core/guards/roles.guard';
@@ -157,38 +161,98 @@ export class UserController {
 
   @Post('switch-role')
   @UseGuards(JwtAuthGuard)
-  @Public()
-  async userSwitchRole(
-    @Body('role') role: CurrentRole,
+  async switchRole(
     @GetUser('id') userId: string,
+    @Body('role') role: CurrentRole,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    // Only allow switching if role is VOLUNTEER or ATTENDEE
-    if (![CurrentRole.VOLUNTEER, CurrentRole.ATTENDEE].includes(role)) {
-      throw new ForbiddenException('Invalid role');
-    }
+    try {
+      console.log(`User ${userId} requesting role switch to ${role}`);
 
-    // Check if user has an approved volunteer application when switching to VOLUNTEER role
-    if (role === CurrentRole.VOLUNTEER) {
-      const hasApprovedApplication =
-        await this.volunteerService.hasApprovedApplication(userId);
-
-      if (!hasApprovedApplication) {
-        throw new ForbiddenException(
-          'You must have an approved volunteer application to switch to volunteer role',
-        );
+      // Validate role input
+      if (![CurrentRole.VOLUNTEER, CurrentRole.ATTENDEE].includes(role)) {
+        throw new BadRequestException('Invalid role');
       }
+
+      // Only validate VOLUNTEER role - ATTENDEE should always be allowed
+      if (role === CurrentRole.VOLUNTEER) {
+        const hasApprovedApplication =
+          await this.volunteerService.hasApprovedApplication(userId);
+
+        if (!hasApprovedApplication) {
+          throw new ForbiddenException(
+            'You must have an approved volunteer application to switch to volunteer role',
+          );
+        }
+      }
+
+      // Switch role and get new tokens
+      const { user, accessToken, refreshToken } =
+        await this.userService.switchRole(userId, role);
+
+      // Set secure cookies
+      res.cookie('accessToken', accessToken, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 15 * 60 * 1000,
+      });
+
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      res.cookie('userRole', role, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 15 * 60 * 1000,
+      });
+
+      res.cookie(
+        'user',
+        JSON.stringify({
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          currentRole: role,
+          systemRole: user.systemRole,
+        }),
+        {
+          httpOnly: false,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 15 * 60 * 1000,
+        },
+      );
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          currentRole: role,
+          systemRole: user.systemRole,
+        },
+        accessToken,
+      };
+    } catch (error) {
+      console.error('Error in switch-role:', error);
+      if (
+        error instanceof ForbiddenException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to switch role');
     }
-
-    // Update the user's role
-    const user = await this.userService.changeCurrentRole(userId, role);
-
-    // Generate new tokens to reflect the role change
-    const tokens = await this.authService.generateTokensForUser(userId);
-
-    return {
-      user,
-      ...tokens,
-    };
   }
 
   @Post('switch-role-redirect')
@@ -196,7 +260,7 @@ export class UserController {
   @Public()
   async switchRoleRedirect(
     @Request() req,
-    @Response() res,
+    @Res() res: Response,
     @Body() body: { role: CurrentRole; redirectUrl: string; token: string },
   ) {
     try {
@@ -209,15 +273,102 @@ export class UserController {
       const { user, accessToken, refreshToken } =
         await this.userService.switchRole(decoded.sub, body.role);
 
-      // Set cookies for the tokens
-      res.cookie('accessToken', accessToken, { httpOnly: true });
-      res.cookie('refreshToken', refreshToken, { httpOnly: true });
+      // IMPORTANT: Set the user cookie with the updated user data
+      // Make sure domain and path are specified
+      res.cookie(
+        'user',
+        JSON.stringify({
+          ...user,
+          currentRole: body.role, // Force the role to match what was requested
+        }),
+        {
+          httpOnly: false,
+          path: '/',
+          maxAge: 15 * 60 * 1000, // 15 minutes
+          sameSite: 'strict',
+        },
+      );
+
+      // Set similar options for the token cookies
+      res.cookie('accessToken', accessToken, {
+        httpOnly: false,
+        path: '/',
+        maxAge: 15 * 60 * 1000, // 15 minutes
+        sameSite: 'strict',
+      });
+
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: false,
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        sameSite: 'strict',
+      });
 
       // Redirect to the specified URL
       return res.redirect(body.redirectUrl);
     } catch (error) {
+      console.error('Error in switch-role-redirect:', error);
       // If token is invalid, redirect to login
       return res.redirect('/login');
+    }
+  }
+
+  @Post('switch-role-direct')
+  @HttpCode(HttpStatus.FOUND) // 302 Found - this forces a redirect
+  @Public()
+  async switchRoleDirect(
+    @Request() req,
+    @Res() res: Response,
+    @Body() body: { role: CurrentRole; token: string; redirectUrl?: string },
+  ) {
+    try {
+      // Verify the token
+      const decoded = this.jwtService.verify(body.token, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+      });
+
+      // Switch role
+      const { user, accessToken, refreshToken } =
+        await this.userService.switchRole(decoded.sub, body.role);
+
+      // Determine redirect URL (fallback to home page if not provided)
+      const redirectUrl =
+        body.redirectUrl ||
+        (body.role === 'VOLUNTEER'
+          ? 'http://localhost:3000/volunteer-role/dashboard?reset=true'
+          : 'http://localhost:3000/?bypass=true');
+
+      // Set cookies - no httpOnly to allow JavaScript access
+      res.cookie('user', JSON.stringify({ ...user, currentRole: body.role }), {
+        httpOnly: false,
+        path: '/',
+        maxAge: 15 * 60 * 1000,
+        sameSite: 'none', 
+        secure: true, // Required when sameSite is 'none'
+      });
+
+      res.cookie('accessToken', accessToken, {
+        httpOnly: false,
+        path: '/',
+        maxAge: 15 * 60 * 1000,
+        sameSite: 'none',
+        secure: true, // Required when sameSite is 'none'
+      });
+
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: false,
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        sameSite: 'none', // Changed from 'lax' to support cross-site
+        secure: true, // Required when sameSite is 'none'
+      });
+
+      // Redirect directly to the frontend
+      return res.redirect(redirectUrl);
+    } catch (error) {
+      console.error('Error in switch-role-direct:', error);
+      // Redirect to login page on error
+      return res.redirect('http://localhost:3000/login');
     }
   }
 }

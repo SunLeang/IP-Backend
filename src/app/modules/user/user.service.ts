@@ -145,6 +145,7 @@ export class UserService {
         username: true,
         fullName: true,
         currentRole: true,
+        systemRole: true,
         updatedAt: true,
       },
     });
@@ -154,11 +155,18 @@ export class UserService {
     // First update the user's role
     const user = await this.changeCurrentRole(id, currentRole);
 
-    // Then generate new tokens
+    // Get complete user data including systemRole
+    const fullUser = await this.findOne(id);
+
+    if (!fullUser) {
+      throw new Error('User not found');
+    }
+
+    // Generate new tokens with updated role
     const tokens = await this.authService.generateTokensForUser(id);
 
     return {
-      user,
+      user: fullUser, // Return the complete user object with systemRole
       ...tokens,
     };
   }

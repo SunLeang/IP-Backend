@@ -12,7 +12,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
-import { SystemRole, User } from '@prisma/client';
+import { SystemRole, User, CurrentRole } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -82,36 +82,27 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
-    // Find user by email
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-    });
+    const user = await this.validateUser(email, password);
 
-    if (!user || user.deletedAt) {
-      throw new UnauthorizedException('Invalid credentials');
+    // Set default role to ATTENDEE if no role is set
+    let currentRole = user.currentRole;
+    if (!currentRole) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { currentRole: CurrentRole.ATTENDEE },
+      });
+      currentRole = CurrentRole.ATTENDEE;
     }
 
-    // Verify password
-    const isPasswordValid = await this.verifyPassword(password, user.password);
-
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    // Generate tokens
     const tokens = await this.generateTokens(user.id, user.email);
-
-    // Save refresh token
-    await this.saveRefreshToken(user.id, tokens.refreshToken);
 
     return {
       user: {
         id: user.id,
         email: user.email,
-        username: user.username,
         fullName: user.fullName,
         systemRole: user.systemRole,
-        currentRole: user.currentRole,
+        currentRole: currentRole,
       },
       ...tokens,
     };
@@ -305,5 +296,23 @@ export class AuthService {
     hashedPassword: string,
   ): Promise<boolean> {
     return bcrypt.compare(plainPassword, hashedPassword);
+  }
+
+  async validateUser(email: string, password: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user || user.deletedAt) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const isPasswordValid = await this.verifyPassword(password, user.password);
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    return user;
   }
 }
