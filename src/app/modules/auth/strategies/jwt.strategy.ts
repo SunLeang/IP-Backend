@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../../prisma/services/prisma.service';
+import { CurrentRole } from '@prisma/client'; // Fixed import path
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -23,23 +24,37 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: { sub: string; email: string }) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        fullName: true,
-        systemRole: true,
-        currentRole: true,
-        deletedAt: true,
-      },
-    });
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          fullName: true,
+          systemRole: true,
+          currentRole: true,
+          deletedAt: true,
+        },
+      });
 
-    if (!user || user.deletedAt) {
-      throw new UnauthorizedException('Invalid token or user does not exist');
+      if (!user || user.deletedAt) {
+        throw new UnauthorizedException('Invalid token or user does not exist');
+      }
+
+      // Ensure user has a currentRole (set default if null)
+      if (!user.currentRole) {
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { currentRole: CurrentRole.ATTENDEE },
+        });
+        user.currentRole = CurrentRole.ATTENDEE;
+      }
+
+      return user;
+    } catch (error) {
+      console.error('JWT validation error:', error);
+      throw new UnauthorizedException('Token validation failed');
     }
-
-    return user;
   }
 }

@@ -25,9 +25,21 @@ export class AuthService {
   async register(registerDto: RegisterDto) {
     const { email, username, password, ...userData } = registerDto;
 
-    // Check if email already exists
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email },
+    console.log('=== Register Debug ===');
+    console.log('Email:', email);
+
+    // Normalize email during registration
+    const normalizedEmail = email.trim().toLowerCase();
+    console.log('Normalized email:', normalizedEmail);
+
+    // Check if email already exists (case-insensitive)
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive',
+        },
+      },
     });
 
     if (existingUser) {
@@ -46,12 +58,13 @@ export class AuthService {
     }
 
     // Hash password
+    console.log('Hashing password...');
     const hashedPassword = await this.hashPassword(password);
 
-    // Create new user
+    // Create new user with normalized email
     const newUser = await this.prisma.user.create({
       data: {
-        email,
+        email: normalizedEmail, // Store normalized email
         username,
         password: hashedPassword,
         ...userData,
@@ -69,8 +82,6 @@ export class AuthService {
 
     // Generate tokens
     const tokens = await this.generateTokens(newUser.id, newUser.email);
-
-    // Save refresh token
     await this.saveRefreshToken(newUser.id, tokens.refreshToken);
 
     return {
@@ -82,30 +93,50 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
-    const user = await this.validateUser(email, password);
+    try {
+      const user = await this.validateUser(email, password);
 
-    // Set default role to ATTENDEE if no role is set
-    let currentRole = user.currentRole;
-    if (!currentRole) {
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { currentRole: CurrentRole.ATTENDEE },
+      // Clean up ALL existing tokens for this user (not just refresh tokens)
+      await this.prisma.refreshToken.updateMany({
+        where: {
+          userId: user.id,
+          isRevoked: false,
+        },
+        data: {
+          isRevoked: true,
+          revokedAt: new Date(),
+        },
       });
-      currentRole = CurrentRole.ATTENDEE;
+
+      // Set default role to ATTENDEE if no role is set
+      let currentRole = user.currentRole;
+      if (!currentRole) {
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { currentRole: CurrentRole.ATTENDEE },
+        });
+        currentRole = CurrentRole.ATTENDEE;
+      }
+
+      // Generate fresh tokens
+      const tokens = await this.generateTokens(user.id, user.email);
+      await this.saveRefreshToken(user.id, tokens.refreshToken);
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          systemRole: user.systemRole,
+          currentRole: currentRole,
+        },
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+      };
+    } catch (error) {
+      console.error('Login error:', error);
+      throw new UnauthorizedException('Invalid credentials');
     }
-
-    const tokens = await this.generateTokens(user.id, user.email);
-
-    return {
-      user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
-        systemRole: user.systemRole,
-        currentRole: currentRole,
-      },
-      ...tokens,
-    };
   }
 
   async logout(userId: string, refreshToken: string) {
@@ -196,7 +227,7 @@ export class AuthService {
   }
 
   private async generateTokens(userId: string, email: string) {
-    // First get the current user data including currentRole
+    // Get the current user data
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -211,14 +242,13 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
-    // Include currentRole and systemRole in the JWT payload
+    // Simplify JWT payload - only include essential data
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(
         {
           sub: userId,
-          email,
-          role: user.systemRole,
-          currentRole: user.currentRole,
+          email: email,
+          // Remove role fields that might cause conflicts
         },
         {
           secret: this.configService.get<string>('JWT_SECRET'),
@@ -228,7 +258,7 @@ export class AuthService {
       this.jwtService.signAsync(
         {
           sub: userId,
-          email,
+          email: email,
         },
         {
           secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
@@ -295,24 +325,64 @@ export class AuthService {
     plainPassword: string,
     hashedPassword: string,
   ): Promise<boolean> {
-    return bcrypt.compare(plainPassword, hashedPassword);
+    try {
+      console.log('=== verifyPassword Debug ===');
+      console.log('Plain password:', plainPassword);
+      console.log('Plain password length:', plainPassword.length);
+      console.log('Hashed password:', hashedPassword);
+      console.log('Hashed password length:', hashedPassword.length);
+
+      const result = await bcrypt.compare(plainPassword, hashedPassword);
+      console.log('bcrypt.compare result:', result);
+
+      return result;
+    } catch (error) {
+      console.error('Error in verifyPassword:', error);
+      return false;
+    }
   }
 
   async validateUser(email: string, password: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { email },
+    console.log('=== validateUser Debug ===');
+    console.log('Email:', email);
+    console.log('Password length:', password.length);
+
+    // Normalize the email
+    const normalizedEmail = email.trim().toLowerCase();
+    console.log('Normalized email:', normalizedEmail);
+
+    // Use Prisma's case-insensitive search directly
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive',
+        },
+        deletedAt: null, // Only get non-deleted users
+      },
     });
 
+    console.log('User found:', !!user);
+    console.log('User deleted:', user?.deletedAt ? 'Yes' : 'No');
+
     if (!user || user.deletedAt) {
+      console.log('❌ User not found or deleted');
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    console.log('Stored email:', user.email);
+    console.log('Input email:', email);
+    console.log('Normalized email:', normalizedEmail);
 
     const isPasswordValid = await this.verifyPassword(password, user.password);
+    console.log('Password valid:', isPasswordValid);
 
     if (!isPasswordValid) {
+      console.log('❌ Password validation failed');
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    console.log('✅ User validation successful');
     return user;
   }
 }

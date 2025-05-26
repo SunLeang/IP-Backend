@@ -295,6 +295,7 @@ model EventAttendance {
 
   @@id([userId, eventId])
   @@index([status])
+  @@index([eventId, status])
 }
 
 model EventVolunteer {
@@ -307,6 +308,8 @@ model EventVolunteer {
 
   @@id([userId, eventId])
   @@index([status])
+  @@index([userId, eventId, status])
+  @@index([eventId, status])
 }
 
 model RefreshToken {
