@@ -2,6 +2,7 @@ import {
   PrismaClient,
   ApplicationStatus,
   VolunteerStatus,
+  CurrentRole,
 } from '@prisma/client';
 
 export async function seedVolunteers(
@@ -51,7 +52,7 @@ export async function seedVolunteers(
     processedAt: new Date(new Date().setDate(new Date().getDate() - 1)),
   });
 
-  // Create event volunteers (for approved applications)
+  // Create EventVolunteer records for approved applications
   await createEventVolunteer(prisma, {
     userId: users.regularUser2.id,
     eventId: events.techWorkshop.id,
@@ -64,6 +65,17 @@ export async function seedVolunteers(
     eventId: events.hackathon.id,
     status: VolunteerStatus.APPROVED,
     approvedAt: new Date(new Date().setDate(new Date().getDate() - 1)),
+  });
+
+  // Update user roles for approved volunteers
+  await prisma.user.update({
+    where: { id: users.regularUser2.id },
+    data: { currentRole: CurrentRole.VOLUNTEER },
+  });
+
+  await prisma.user.update({
+    where: { id: users.regularUser1.id },
+    data: { currentRole: CurrentRole.VOLUNTEER },
   });
 
   console.log(

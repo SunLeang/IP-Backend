@@ -14,6 +14,7 @@ import {
   SystemRole,
   VolunteerStatus,
   EventStatus,
+  AttendanceStatus,
 } from '@prisma/client';
 import { NotificationService } from '../../notification/notification.service';
 
@@ -238,8 +239,9 @@ export class VolunteerService {
         user: {
           select: {
             id: true,
-            fullName: true,
             email: true,
+            fullName: true,
+            currentRole: true,
           },
         },
       },
@@ -249,101 +251,98 @@ export class VolunteerService {
       throw new NotFoundException(`Application with ID ${id} not found`);
     }
 
-    // Only event organizer, admin, or super admin can update status
+    // Authorization check
     if (
       application.event.organizerId !== userId &&
-      userRole === SystemRole.USER
+      userRole !== SystemRole.ADMIN &&
+      userRole !== SystemRole.SUPER_ADMIN
     ) {
       throw new ForbiddenException(
         'You do not have permission to update this application',
       );
     }
 
-    // Make sure we can only transition from PENDING to APPROVED/REJECTED
-    if (application.status !== ApplicationStatus.PENDING) {
-      throw new ForbiddenException(
-        `Cannot update application that is already ${application.status}`,
-      );
-    }
-
-    // Update the application status
-    const updatedApplication = await this.prisma.volunteerApplication.update({
-      where: { id },
-      data: {
-        status: updateDto.status,
-        processedAt: new Date(),
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
+    return await this.prisma.$transaction(async (prisma) => {
+      // Update the application
+      const updatedApplication = await prisma.volunteerApplication.update({
+        where: { id },
+        data: {
+          status: updateDto.status,
+          processedAt: new Date(),
+        },
+        include: {
+          event: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
-        },
-        event: {
-          select: {
-            id: true,
-            name: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              fullName: true,
+              currentRole: true,
+            },
           },
-        },
-      },
-    });
-
-    // If application is approved, update the user's currentRole and create EventVolunteer entry
-    if (updateDto.status === ApplicationStatus.APPROVED) {
-      console.log(
-        'Approving volunteer application for user:',
-        application.userId,
-      );
-      try {
-        await this.prisma.user.update({
-          where: { id: application.userId },
-          data: { currentRole: CurrentRole.VOLUNTEER },
-        });
-      } catch (e) {
-        console.error('Failed to update user currentRole:', e);
-        throw e;
-      }
-
-      // Create or update EventVolunteer record
-      await this.prisma.eventVolunteer.upsert({
-        where: {
-          userId_eventId: {
-            userId: application.userId,
-            eventId: application.eventId,
-          },
-        },
-        update: {
-          status: VolunteerStatus.APPROVED,
-          approvedAt: new Date(),
-        },
-        create: {
-          userId: application.userId,
-          eventId: application.eventId,
-          status: VolunteerStatus.APPROVED,
-          approvedAt: new Date(),
         },
       });
 
-      // Notify the applicant
-      await this.notificationService.createApplicationNotification(
-        application.userId,
-        application.id,
-        application.eventId,
-        `Your volunteer application for "${application.event.name}" has been approved!`,
-      );
-    } else if (updateDto.status === ApplicationStatus.REJECTED) {
-      // Notify the applicant
-      await this.notificationService.createApplicationNotification(
-        application.userId,
-        application.id,
-        application.eventId,
-        `Your volunteer application for "${application.event.name}" has been declined.`,
-      );
-    }
+      if (updateDto.status === ApplicationStatus.APPROVED) {
+        // Create EventVolunteer record
+        await prisma.eventVolunteer.upsert({
+          where: {
+            userId_eventId: {
+              userId: application.userId,
+              eventId: application.eventId,
+            },
+          },
+          update: {
+            status: VolunteerStatus.APPROVED,
+            approvedAt: new Date(),
+          },
+          create: {
+            userId: application.userId,
+            eventId: application.eventId,
+            status: VolunteerStatus.APPROVED,
+            approvedAt: new Date(),
+          },
+        });
 
-    return updatedApplication;
+        // Update user role
+        await prisma.user.update({
+          where: { id: application.userId },
+          data: { currentRole: CurrentRole.VOLUNTEER },
+        });
+      } else if (updateDto.status === ApplicationStatus.REJECTED) {
+        // Remove EventVolunteer record if exists
+        await prisma.eventVolunteer.deleteMany({
+          where: {
+            userId: application.userId,
+            eventId: application.eventId,
+          },
+        });
+
+        // Check if user has other volunteer roles
+        const otherVolunteerRoles = await prisma.eventVolunteer.count({
+          where: {
+            userId: application.userId,
+            eventId: { not: application.eventId },
+            status: VolunteerStatus.APPROVED,
+          },
+        });
+
+        // If no other volunteer roles, change back to ATTENDEE
+        if (otherVolunteerRoles === 0) {
+          await prisma.user.update({
+            where: { id: application.userId },
+            data: { currentRole: CurrentRole.ATTENDEE },
+          });
+        }
+      }
+
+      return updatedApplication;
+    });
   }
 
   // Get all volunteers for an event
@@ -454,6 +453,9 @@ export class VolunteerService {
 
   // Get dashboard statistics for a user
   async getDashboardStats(userId: string) {
+    console.log('=== Getting Dashboard Stats ===');
+    console.log('User ID:', userId);
+
     // Get all events where the user is a volunteer
     const volunteerEvents = await this.prisma.eventVolunteer.findMany({
       where: {
@@ -465,10 +467,19 @@ export class VolunteerService {
           select: {
             id: true,
             name: true,
+            status: true,
             _count: {
               select: {
-                attendingUsers: true,
-                volunteers: true,
+                attendingUsers: {
+                  where: {
+                    status: AttendanceStatus.JOINED,
+                  },
+                },
+                volunteers: {
+                  where: {
+                    status: VolunteerStatus.APPROVED,
+                  },
+                },
               },
             },
           },
@@ -476,12 +487,16 @@ export class VolunteerService {
       },
     });
 
-    // Count total tasks assigned to this volunteer
+    console.log(`Found ${volunteerEvents.length} volunteer events for user`);
+
+    // Get all tasks assigned to this volunteer across all events
     const taskCount = await this.prisma.taskAssignment.count({
       where: {
         volunteerId: userId,
       },
     });
+
+    console.log(`Found ${taskCount} tasks assigned to volunteer`);
 
     // Calculate total attendees across all volunteer events
     let totalAttendees = 0;
@@ -489,34 +504,44 @@ export class VolunteerService {
     // Format event data for dashboard
     const events = volunteerEvents.map((ve) => {
       const attendeeCount = ve.event._count.attendingUsers;
+      const volunteerCount = ve.event._count.volunteers;
       totalAttendees += attendeeCount;
 
-      // Estimate capacity as 20% more than current attendees (or use actual capacity if available)
-      const attendeeCapacity = Math.ceil(attendeeCount * 1.2);
+      // Calculate capacity as 20% more than current attendees (or use actual capacity if available)
+      const attendeeCapacity = Math.max(
+        attendeeCount + 10,
+        Math.ceil(attendeeCount * 1.2),
+      );
 
       return {
-        id: Number(ve.event.id),
+        id: parseInt(ve.event.id.substring(0, 8), 16), // Convert UUID to number for frontend
         name: ve.event.name,
         attendeeCount,
         attendeeCapacity,
-        volunteerCount: `${ve.event._count.volunteers}/20`, // Format as "current/total"
-        progress: Math.round((attendeeCount / attendeeCapacity) * 100),
+        volunteerCount: `${volunteerCount}/20`, // Format as "current/total"
+        progress: Math.min(
+          100,
+          Math.round((attendeeCount / attendeeCapacity) * 100),
+        ),
       };
     });
 
-    // Total volunteers across all events
-    const volunteerCount = await this.prisma.eventVolunteer.count({
+    // Get total volunteers across all events this user volunteers for
+    const totalVolunteers = await this.prisma.eventVolunteer.count({
       where: {
         eventId: { in: volunteerEvents.map((ve) => ve.eventId) },
         status: VolunteerStatus.APPROVED,
       },
     });
 
-    return {
+    const result = {
       attendeeCount: totalAttendees,
       taskCount,
-      volunteerCount,
+      volunteerCount: totalVolunteers,
       events,
     };
+
+    console.log('Dashboard stats result:', result);
+    return result;
   }
 }
