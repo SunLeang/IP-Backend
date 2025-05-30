@@ -132,8 +132,18 @@ export class VolunteerService {
       throw new NotFoundException(`Event with ID ${eventId} not found`);
     }
 
-    // Only event organizer, admin, or super admin can see all applications
-    if (event.organizerId !== userId && userRole === SystemRole.USER) {
+    // Authorization check - CORRECTED LOGIC
+    if (userRole === SystemRole.SUPER_ADMIN) {
+      // Super admin can view applications for any event
+    } else if (userRole === SystemRole.ADMIN) {
+      // Admin can only view applications for events they organized
+      if (event.organizerId !== userId) {
+        throw new ForbiddenException(
+          'You can only view volunteer applications for events you organize',
+        );
+      }
+    } else {
+      // Regular users cannot view event applications
       throw new ForbiddenException(
         'You do not have permission to view these applications',
       );
@@ -251,14 +261,20 @@ export class VolunteerService {
       throw new NotFoundException(`Application with ID ${id} not found`);
     }
 
-    // Authorization check
-    if (
-      application.event.organizerId !== userId &&
-      userRole !== SystemRole.ADMIN &&
-      userRole !== SystemRole.SUPER_ADMIN
-    ) {
+    // Authorization check - CORRECTED LOGIC
+    if (userRole === SystemRole.SUPER_ADMIN) {
+      // Super admin can modify any application
+    } else if (userRole === SystemRole.ADMIN) {
+      // Admin can only modify applications for events they organized
+      if (application.event.organizerId !== userId) {
+        throw new ForbiddenException(
+          'You can only update volunteer applications for events you organize',
+        );
+      }
+    } else {
+      // Regular users cannot modify applications
       throw new ForbiddenException(
-        'You do not have permission to update this application',
+        'You do not have permission to update volunteer applications',
       );
     }
 
@@ -389,8 +405,18 @@ export class VolunteerService {
       throw new NotFoundException(`Event with ID ${eventId} not found`);
     }
 
-    // Only event organizer, admin, or super admin can remove volunteers
-    if (event.organizerId !== userId && userRole === SystemRole.USER) {
+    // Authorization check - CORRECTED LOGIC
+    if (userRole === SystemRole.SUPER_ADMIN) {
+      // Super admin can remove volunteers from any event
+    } else if (userRole === SystemRole.ADMIN) {
+      // Admin can only remove volunteers from events they organized
+      if (event.organizerId !== userId) {
+        throw new ForbiddenException(
+          'You can only remove volunteers from events you organize',
+        );
+      }
+    } else {
+      // Regular users cannot remove volunteers
       throw new ForbiddenException(
         'You do not have permission to remove volunteers',
       );
@@ -497,6 +523,22 @@ export class VolunteerService {
     });
 
     console.log(`Found ${taskCount} tasks assigned to volunteer`);
+
+    // If no tasks found, let's also check if there are any tasks for events this user volunteers for
+    if (taskCount === 0) {
+      console.log('No direct task assignments found. Checking event tasks...');
+
+      const eventIds = volunteerEvents.map((ve) => ve.eventId);
+      const availableTasksCount = await this.prisma.task.count({
+        where: {
+          eventId: { in: eventIds },
+        },
+      });
+
+      console.log(
+        `Found ${availableTasksCount} total tasks for volunteer events`,
+      );
+    }
 
     // Calculate total attendees across all volunteer events
     let totalAttendees = 0;

@@ -163,10 +163,20 @@ export class EventService {
       throw new NotFoundException(`Event with ID ${id} not found`);
     }
 
-    // Only admins or the event organizer can update the event
-    if (event.organizerId !== userId && userRole === SystemRole.USER) {
+    // Authorization check - FIXED LOGIC
+    if (userRole === SystemRole.SUPER_ADMIN) {
+      // Super admin can update any event
+    } else if (userRole === SystemRole.ADMIN) {
+      // Admin can ONLY update events THEY organized
+      if (event.organizerId !== userId) {
+        throw new ForbiddenException(
+          'You can only update events that you organize',
+        );
+      }
+    } else {
+      // Regular users cannot update events
       throw new ForbiddenException(
-        'You can only update events that you organize',
+        'You do not have permission to update events',
       );
     }
 
@@ -208,10 +218,20 @@ export class EventService {
       throw new NotFoundException(`Event with ID ${id} not found`);
     }
 
-    // Only admins, super admins, or the event organizer can delete the event
-    if (event.organizerId !== userId && userRole === SystemRole.USER) {
+    // Authorization check - FIXED LOGIC
+    if (userRole === SystemRole.SUPER_ADMIN) {
+      // Super admin can delete any event
+    } else if (userRole === SystemRole.ADMIN) {
+      // Admin can ONLY delete events THEY organized
+      if (event.organizerId !== userId) {
+        throw new ForbiddenException(
+          'You can only delete events that you organize',
+        );
+      }
+    } else {
+      // Regular users cannot delete events
       throw new ForbiddenException(
-        'You can only delete events that you organize',
+        'You do not have permission to delete events',
       );
     }
 
@@ -239,10 +259,20 @@ export class EventService {
       throw new NotFoundException(`Event with ID ${id} not found`);
     }
 
-    // Only admins or the event organizer can update the event status
-    if (event.organizerId !== userId && userRole === SystemRole.USER) {
+    // Authorization check - FIXED LOGIC
+    if (userRole === SystemRole.SUPER_ADMIN) {
+      // Super admin can update any event status
+    } else if (userRole === SystemRole.ADMIN) {
+      // Admin can ONLY update status for events THEY organized
+      if (event.organizerId !== userId) {
+        throw new ForbiddenException(
+          'You can only update status for events that you organize',
+        );
+      }
+    } else {
+      // Regular users cannot update event status
       throw new ForbiddenException(
-        'You can only update events that you organize',
+        'You do not have permission to update event status',
       );
     }
 
@@ -291,10 +321,20 @@ export class EventService {
       throw new NotFoundException(`Event with ID ${id} not found`);
     }
 
-    // Only admins or event organizer can update this setting
-    if (event.organizerId !== userId && userRole === SystemRole.USER) {
+    // Authorization check - FIXED LOGIC
+    if (userRole === SystemRole.SUPER_ADMIN) {
+      // Super admin can update any event
+    } else if (userRole === SystemRole.ADMIN) {
+      // Admin can ONLY update events THEY organized
+      if (event.organizerId !== userId) {
+        throw new ForbiddenException(
+          'You can only update events that you organize',
+        );
+      }
+    } else {
+      // Regular users cannot update events
       throw new ForbiddenException(
-        'You can only update events that you organize',
+        'You do not have permission to update events',
       );
     }
 

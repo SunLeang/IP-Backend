@@ -69,7 +69,7 @@ async function createOrganizer(prisma: PrismaClient) {
       email: 'organizer@example.com',
       password: await bcrypt.hash('Password123!', 10),
       fullName: 'Event Organizer',
-      systemRole: SystemRole.USER,
+      systemRole: SystemRole.ADMIN,
       currentRole: CurrentRole.ATTENDEE,
       username: 'organizer',
       gender: 'FEMALE',

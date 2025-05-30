@@ -11,6 +11,7 @@ import { seedNotifications } from './data/notifications';
 import { seedComments } from './data/comments';
 import { seedRefreshTokens } from './data/refresh-tokens';
 import { seedCertificates } from './data/certificates';
+import { seedTaskAssignments } from './data/task-assignments';
 
 const prisma = new PrismaClient({
   log: ['warn', 'error'],
@@ -102,6 +103,11 @@ async function main() {
 
     if (!seedTypes || seedTypes.includes('refresh-tokens')) {
       await seedRefreshTokens(prisma, users);
+    }
+
+    // Seed task assignments (after volunteers are created)
+    if (!seedTypes || seedTypes.includes('task-assignments')) {
+      await seedTaskAssignments(prisma, users, tasks);
     }
 
     console.log('Database seeding completed successfully!');

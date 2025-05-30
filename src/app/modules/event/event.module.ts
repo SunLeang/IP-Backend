@@ -10,6 +10,7 @@ import { InterestService } from './interest/interest.service';
 import { InterestModule } from './interest/interest.module';
 import { CommentRatingModule } from './comment_rating/comment-rating.module';
 import { AnnouncementModule } from './announcement/announcement.module';
+import { TaskModule } from './task/task.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AnnouncementModule } from './announcement/announcement.module';
     InterestModule,
     CommentRatingModule,
     AnnouncementModule,
+    TaskModule,
   ],
   controllers: [EventController, AttendanceController],
   providers: [EventService, AttendanceService, InterestService],

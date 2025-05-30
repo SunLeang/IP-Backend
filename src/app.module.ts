@@ -15,6 +15,7 @@ import { VolunteerModule } from './app/modules/event/volunteer/volunteer.module'
 import { CommentRatingModule } from './app/modules/event/comment_rating/comment-rating.module';
 import { AttendanceModule } from './app/modules/event/attendance/attendance.module';
 import { NotificationModule } from './app/modules/notification/notification.module';
+import { TaskModule } from './app/modules/event/task/task.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { NotificationModule } from './app/modules/notification/notification.modu
     CommentRatingModule,
     AttendanceModule,
     NotificationModule,
+    TaskModule,
   ],
   providers: [
     // Register JwtAuthGuard as a global guard

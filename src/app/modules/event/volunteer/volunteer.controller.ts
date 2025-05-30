@@ -92,7 +92,7 @@ export class VolunteerController {
   })
   @ApiResponse({ status: 403, description: 'Forbidden resource' })
   @ApiResponse({ status: 404, description: 'Application not found' })
-  @Roles(SystemRole.ADMIN, SystemRole.SUPER_ADMIN)
+  @Roles(SystemRole.ADMIN, SystemRole.SUPER_ADMIN) 
   async updateApplicationStatus(
     @Param('id') id: string,
     @Body() updateDto: UpdateVolunteerApplicationDto,

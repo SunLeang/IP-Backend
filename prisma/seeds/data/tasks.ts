@@ -51,6 +51,34 @@ export async function seedTasks(prisma: PrismaClient, events: any) {
     status: TaskStatus.PENDING,
   });
 
+  const task6 = await createTask(prisma, {
+    name: 'Site Coordination',
+    description: 'Coordinate cleanup zones and safety measures',
+    eventId: events.environmentalCleanup.id,
+    type: 'Coordination',
+    dueDate: new Date('2025-07-03T07:30:00Z'),
+    status: TaskStatus.PENDING,
+  });
+
+  // Hackathon tasks
+  const task7 = await createTask(prisma, {
+    name: 'Mentor Coordination',
+    description: 'Organize and schedule mentor sessions',
+    eventId: events.hackathon.id,
+    type: 'Coordination',
+    dueDate: new Date('2025-08-15T09:00:00Z'),
+    status: TaskStatus.PENDING,
+  });
+
+  const task8 = await createTask(prisma, {
+    name: 'Prize Setup',
+    description: 'Prepare and organize prizes for winners',
+    eventId: events.hackathon.id,
+    type: 'Setup',
+    dueDate: new Date('2025-08-14T18:00:00Z'),
+    status: TaskStatus.PENDING,
+  });
+
   console.log('Tasks seeded successfully');
 
   return {
@@ -59,6 +87,9 @@ export async function seedTasks(prisma: PrismaClient, events: any) {
     equipmentSetup: task3,
     prepareHandouts: task4,
     distributeEquipment: task5,
+    siteCoordination: task6,
+    mentorCoordination: task7,
+    prizeSetup: task8,
   };
 }
 

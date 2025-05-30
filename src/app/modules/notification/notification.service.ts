@@ -245,4 +245,21 @@ export class NotificationService {
       message,
     });
   }
+
+  /**
+   * Create notification for task assignments
+   */
+  async createTaskNotification(
+    userId: string,
+    taskId: string,
+    message: string,
+  ) {
+    return this.prisma.notification.create({
+      data: {
+        type: NotificationType.TASK_ASSIGNMENT,
+        message,
+        user: { connect: { id: userId } },
+      },
+    });
+  }
 }
