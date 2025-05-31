@@ -2,17 +2,22 @@ import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AuthService } from './auth.service';
+import { AuthService } from './services/auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
 import { UserModule } from '../user/user.module';
 import { PrismaModule } from '../../prisma/prisma.module';
+import { PasswordService } from './services/password.service';
+import { UserAuthService } from './services/user-auth.service';
+import { TokenService } from './services/token.service';
 
 @Module({
   imports: [
+    // Use ConfigModule to access environment variables
     ConfigModule,
-    PassportModule.register({ defaultStrategy: 'jwt' }),
+    PassportModule.register({ defaultStrategy: 'jwt' }), // Set default strategy to JWT
+    // Configure JWT module with async options
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -23,11 +28,27 @@ import { PrismaModule } from '../../prisma/prisma.module';
         },
       }),
     }),
-    forwardRef(() => UserModule), // Fix circular dependency
+    // Forward reference to UserModule to resolve circular dependency
+    forwardRef(() => UserModule),
     PrismaModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, RefreshTokenStrategy],
-  exports: [AuthService, JwtStrategy, PassportModule, JwtModule],
+  providers: [
+      AuthService,
+      UserAuthService,
+      TokenService,
+      PasswordService,
+      JwtStrategy, 
+      RefreshTokenStrategy,
+    ],
+  exports: [
+    AuthService, 
+    UserAuthService,
+    TokenService,
+    PasswordService,
+    JwtStrategy, 
+    PassportModule, 
+    JwtModule
+  ],
 })
 export class AuthModule {}

@@ -1,4 +1,7 @@
 // src/app/modules/auth/controllers/auth.controller.ts
+/**************************************
+ * IMPORTS
+ **************************************/
 import {
   Controller,
   Get,
@@ -8,10 +11,9 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { AuthService } from './auth.service';
+import { AuthService } from './services/auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { GetUser } from 'src/app/core/decorators/get-user.decorator';
 import { Public } from 'src/app/core/decorators/public.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -20,16 +22,39 @@ import { Roles } from 'src/app/core/decorators/roles.decorator';
 import { RolesGuard } from 'src/app/core/guards/roles.guard';
 import { SystemRole } from '@prisma/client';
 
+// Import our custom Swagger decorators
+import {
+  AuthControllerSwagger,
+  RegisterSwagger,
+  LoginSwagger,
+  LogoutSwagger,
+  RefreshTokenSwagger,
+  GetProfileSwagger,
+  AdminRouteSwagger,
+  SuperAdminRouteSwagger,
+} from './decorators/swagger';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
+
+/**************************************
+ * CONTROLLER DEFINITION
+ **************************************/
+@AuthControllerSwagger()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  /**************************************
+   * PUBLIC ENDPOINTS
+   **************************************/
+
+  @RegisterSwagger()
   @Public()
   @Post('register')
   register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
 
+  @LoginSwagger()
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -37,6 +62,19 @@ export class AuthController {
     return this.authService.login(loginDto);
   }
 
+  @RefreshTokenSwagger()
+  @Public()
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  refreshTokens(@Body() refreshTokenDto: RefreshTokenDto) {
+    return this.authService.refreshTokens(refreshTokenDto.refreshToken);
+  }
+
+  /**************************************
+   * PROTECTED ENDPOINTS
+   **************************************/
+
+  @LogoutSwagger()
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.OK)
@@ -47,17 +85,11 @@ export class AuthController {
     return this.authService.logout(userId, body.refreshToken);
   }
 
-  @Public()
-  @UseGuards(RefreshTokenGuard)
-  @Post('refresh')
-  @HttpCode(HttpStatus.OK)
-  refreshTokens(
-    @GetUser('id') userId: string,
-    @GetUser('refreshToken') refreshToken: string,
-  ) {
-    return this.authService.refreshTokens(userId, refreshToken);
-  }
+  /**************************************
+   * USER PROFILE ENDPOINTS
+   **************************************/
 
+  @GetProfileSwagger()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(SystemRole.USER)
   @Get('profile')
@@ -65,6 +97,11 @@ export class AuthController {
     return user;
   }
 
+  /**************************************
+   * ADMIN ENDPOINTS
+   **************************************/
+
+  @AdminRouteSwagger()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(SystemRole.ADMIN)
   @Get('admin')
@@ -72,6 +109,7 @@ export class AuthController {
     return { message: 'This is an admin route' };
   }
 
+  @SuperAdminRouteSwagger()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(SystemRole.SUPER_ADMIN)
   @Get('super-admin')

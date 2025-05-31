@@ -27,7 +27,7 @@ import { GetUser } from 'src/app/core/decorators/get-user.decorator';
 import { CurrentRole, SystemRole } from '@prisma/client';
 import { VolunteerService } from '../event/volunteer/volunteer.service';
 import { Public } from 'src/app/core/decorators/public.decorator';
-import { AuthService } from '../auth/auth.service';
+import { AuthService } from '../auth/services/auth.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 
