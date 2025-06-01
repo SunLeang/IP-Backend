@@ -15,20 +15,6 @@ export class TokenService {
    * Generate access and refresh tokens for a user
    */
   async generateTokens(userId: string, email: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        currentRole: true,
-        systemRole: true,
-      },
-    });
-
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(
         {
@@ -80,9 +66,9 @@ export class TokenService {
   }
 
   /**
-   * Refresh the tokens using the refresh token
+   * Refresh tokens using refresh token 
    */
-  async refreshTokensFromToken(refreshToken: string) {
+  async refreshTokens(refreshToken: string) {
     try {
       // Verify and decode the refresh token
       const payload = this.jwtService.verify(refreshToken, {
@@ -140,56 +126,6 @@ export class TokenService {
       console.error('Refresh token error:', error);
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
-  }
-
-  /**
-   * EXISTING: Refresh tokens (kept for backward compatibility)
-   */
-  async refreshTokens(userId: string, refreshToken: string) {
-    const tokenRecord = await this.prisma.refreshToken.findFirst({
-      where: {
-        userId,
-        token: refreshToken,
-        isRevoked: false,
-        expiresAt: {
-          gt: new Date(),
-        },
-      },
-    });
-
-    if (!tokenRecord) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
-    }
-
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        deletedAt: true,
-      },
-    });
-
-    if (!user || user.deletedAt) {
-      throw new UnauthorizedException('User not found or deleted');
-    }
-
-    // Revoke the old refresh token
-    await this.prisma.refreshToken.update({
-      where: { id: tokenRecord.id },
-      data: {
-        isRevoked: true,
-        revokedAt: new Date(),
-      },
-    });
-
-    // Generate new tokens
-    const tokens = await this.generateTokens(user.id, user.email);
-
-    // Save new refresh token
-    await this.saveRefreshToken(user.id, tokens.refreshToken);
-
-    return tokens;
   }
 
   /**

@@ -24,7 +24,7 @@ export class AuthService {
   }
 
   async refreshTokens(refreshToken: string) {
-    return this.tokenService.refreshTokensFromToken(refreshToken);
+    return this.tokenService.refreshTokens(refreshToken);
   }
 
   async generateTokensForUser(userId: string) {

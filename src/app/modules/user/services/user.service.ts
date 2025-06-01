@@ -1,16 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/app/prisma/services/prisma.service';
 import { CurrentRole, SystemRole } from '@prisma/client';
-import { AuthService } from '../auth/services/auth.service';
-import { Inject, forwardRef } from '@nestjs/common';
 
 @Injectable()
 export class UserService {
-  constructor(
-    private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => AuthService))
-    private readonly authService: AuthService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**************************************
+   * BASIC CRUD OPERATIONS
+   **************************************/
 
   async findAll() {
     return this.prisma.user.findMany({
@@ -104,7 +102,11 @@ export class UserService {
     });
   }
 
-  async changeRole(id: string, systemRole: SystemRole) {
+  /**************************************
+   * BASIC ROLE OPERATIONS
+   **************************************/
+
+  async changeSystemRole(id: string, systemRole: SystemRole) {
     const user = await this.prisma.user.findUnique({
       where: { id },
     });
@@ -149,25 +151,5 @@ export class UserService {
         updatedAt: true,
       },
     });
-  }
-
-  async switchRole(id: string, currentRole: CurrentRole) {
-    // First update the user's role
-    const user = await this.changeCurrentRole(id, currentRole);
-
-    // Get complete user data including systemRole
-    const fullUser = await this.findOne(id);
-
-    if (!fullUser) {
-      throw new Error('User not found');
-    }
-
-    // Generate new tokens with updated role
-    const tokens = await this.authService.generateTokensForUser(id);
-
-    return {
-      user: fullUser, // Return the complete user object with systemRole
-      ...tokens,
-    };
   }
 }
