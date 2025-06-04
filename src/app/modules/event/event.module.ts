@@ -1,12 +1,26 @@
 import { Module } from '@nestjs/common';
-import { EventService } from './event.service';
+
+// Import controllers
 import { EventController } from './event.controller';
-import { CategoryModule } from './category/category.module';
-import { PrismaModule } from '../../prisma/prisma.module';
-import { AttendanceService } from './attendance/attendance.service';
+import { EventDashboardController } from './event-dashboard.controller';
 import { AttendanceController } from './attendance/attendance.controller';
-import { AttendanceModule } from './attendance/attendance.module';
+
+// Import services
+import { EventService } from './services/event.service';
+import { EventPermissionService } from './services/event-permission.service';
+import { EventQueryService } from './services/event-query.service';
+import { EventAdminService } from './services/event-admin.service';
+import { EventAnalyticsService } from './services/dashboard/event-analytics.service';
+import { EventDashboardService } from './services/dashboard/event-dashboard.service'; // Add new services
+import { EventStatsService } from './services/dashboard/event-stats.service';
+import { EventPaginationService } from './services/dashboard/event-pagination.service';
+import { AttendanceService } from './attendance/attendance.service';
 import { InterestService } from './interest/interest.service';
+
+// Import modules
+import { PrismaModule } from '../../prisma/prisma.module';
+import { CategoryModule } from './category/category.module';
+import { AttendanceModule } from './attendance/attendance.module';
 import { InterestModule } from './interest/interest.module';
 import { CommentRatingModule } from './comment_rating/comment-rating.module';
 import { AnnouncementModule } from './announcement/announcement.module';
@@ -22,8 +36,32 @@ import { TaskModule } from './task/task.module';
     AnnouncementModule,
     TaskModule,
   ],
-  controllers: [EventController, AttendanceController],
-  providers: [EventService, AttendanceService, InterestService],
-  exports: [EventService],
+  controllers: [
+    EventController,
+    EventDashboardController,
+    AttendanceController,
+  ],
+  providers: [
+    EventService,
+    EventPermissionService,
+    EventQueryService,
+    EventAdminService,
+    EventAnalyticsService,
+    EventDashboardService,
+    EventStatsService,
+    EventPaginationService,
+    AttendanceService,
+    InterestService,
+  ],
+  exports: [
+    EventService,
+    EventPermissionService,
+    EventQueryService,
+    EventAdminService,
+    EventAnalyticsService,
+    EventDashboardService,
+    EventStatsService,
+    EventPaginationService,
+  ],
 })
 export class EventModule {}

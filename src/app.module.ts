@@ -7,8 +7,6 @@ import { PrismaModule } from './app/prisma/prisma.module';
 import { AuthMiddleware } from './app/core/middleware/auth.middleware';
 import { JwtAuthGuard } from './app/modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from './app/core/guards/roles.guard';
-import { EventController } from './app/modules/event/event.controller';
-import { EventService } from './app/modules/event/event.service';
 import { EventModule } from './app/modules/event/event.module';
 import { CategoryModule } from './app/modules/event/category/category.module';
 import { VolunteerModule } from './app/modules/event/volunteer/volunteer.module';
@@ -44,9 +42,9 @@ import { TaskModule } from './app/modules/event/task/task.module';
       provide: APP_GUARD,
       useClass: RolesGuard,
     },
-    EventService,
   ],
-  controllers: [EventController],
+  controllers: [
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
