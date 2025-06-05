@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/app/prisma/services/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -7,6 +11,10 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 export class CategoryService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**************************************
+   * CREATE OPERATIONS
+   **************************************/
+
   async create(createCategoryDto: CreateCategoryDto) {
     // Check if category with same name already exists
     const existingCategory = await this.prisma.eventCategory.findUnique({
@@ -14,13 +22,19 @@ export class CategoryService {
     });
 
     if (existingCategory) {
-      throw new ConflictException(`Category with name '${createCategoryDto.name}' already exists`);
+      throw new ConflictException(
+        `Category with name '${createCategoryDto.name}' already exists`,
+      );
     }
 
     return this.prisma.eventCategory.create({
       data: createCategoryDto,
     });
   }
+
+  /**************************************
+   * FIND OPERATIONS
+   **************************************/
 
   async findAll() {
     return this.prisma.eventCategory.findMany({
@@ -57,6 +71,10 @@ export class CategoryService {
     return category;
   }
 
+  /**************************************
+   * UPDATE OPERATIONS
+   **************************************/
+
   async update(id: string, updateCategoryDto: UpdateCategoryDto) {
     // Check if category exists
     const category = await this.prisma.eventCategory.findUnique({
@@ -74,7 +92,9 @@ export class CategoryService {
       });
 
       if (existingCategory) {
-        throw new ConflictException(`Category with name '${updateCategoryDto.name}' already exists`);
+        throw new ConflictException(
+          `Category with name '${updateCategoryDto.name}' already exists`,
+        );
       }
     }
 
@@ -83,6 +103,10 @@ export class CategoryService {
       data: updateCategoryDto,
     });
   }
+
+  /**************************************
+   * DELETE OPERATIONS
+   **************************************/
 
   async remove(id: string) {
     // Check if category exists

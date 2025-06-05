@@ -16,6 +16,10 @@ export class AnnouncementService {
     private readonly notificationService: NotificationService,
   ) {}
 
+  /**************************************
+   * CREATE OPERATIONS
+   **************************************/
+
   /**
    * Create a new announcement and notify all relevant users
    */
@@ -62,6 +66,10 @@ export class AnnouncementService {
     return announcement;
   }
 
+  /**************************************
+   * FIND OPERATIONS
+   **************************************/
+
   /**
    * Get all announcements for an event
    */
@@ -105,6 +113,10 @@ export class AnnouncementService {
     return announcement;
   }
 
+  /**************************************
+   * UPDATE OPERATIONS
+   **************************************/
+
   /**
    * Update an announcement
    */
@@ -145,6 +157,10 @@ export class AnnouncementService {
 
     return updatedAnnouncement;
   }
+
+  /**************************************
+   * DELETE OPERATIONS
+   **************************************/
 
   /**
    * Delete an announcement
