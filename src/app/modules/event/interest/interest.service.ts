@@ -13,6 +13,10 @@ import { SystemRole } from '@prisma/client';
 export class InterestService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**************************************
+   * CREATE OPERATIONS
+   **************************************/
+
   /**
    * Add an event to user's interests
    */
@@ -63,34 +67,9 @@ export class InterestService {
     });
   }
 
-  /**
-   * Remove event from user's interests
-   */
-  async removeInterest(userId: string, eventId: string) {
-    // Check if interest exists
-    const interest = await this.prisma.eventInterest.findUnique({
-      where: {
-        userId_eventId: {
-          userId,
-          eventId,
-        },
-      },
-    });
-
-    if (!interest) {
-      throw new NotFoundException('Interest record not found');
-    }
-
-    // Delete the interest
-    return this.prisma.eventInterest.delete({
-      where: {
-        userId_eventId: {
-          userId,
-          eventId,
-        },
-      },
-    });
-  }
+  /**************************************
+   * READ OPERATIONS
+   **************************************/
 
   /**
    * Get all interests for a user
@@ -169,7 +148,7 @@ export class InterestService {
       throw new NotFoundException(`Event with ID ${eventId} not found`);
     }
 
-    // Fix: Properly check authorized roles
+    // Check authorization - admins or event organizer only
     const isAdmin =
       userRole === SystemRole.SUPER_ADMIN || userRole === SystemRole.ADMIN;
     const isOrganizer = event.organizerId === currentUserId;
@@ -180,7 +159,7 @@ export class InterestService {
       );
     }
 
-    // Build where clause
+    // Build where clause for search functionality
     const where: any = { eventId };
 
     if (search) {
@@ -244,5 +223,38 @@ export class InterestService {
     });
 
     return { interested: !!interest };
+  }
+
+  /**************************************
+   * DELETE OPERATIONS
+   **************************************/
+
+  /**
+   * Remove event from user's interests
+   */
+  async removeInterest(userId: string, eventId: string) {
+    // Check if interest exists
+    const interest = await this.prisma.eventInterest.findUnique({
+      where: {
+        userId_eventId: {
+          userId,
+          eventId,
+        },
+      },
+    });
+
+    if (!interest) {
+      throw new NotFoundException('Interest record not found');
+    }
+
+    // Delete the interest
+    return this.prisma.eventInterest.delete({
+      where: {
+        userId_eventId: {
+          userId,
+          eventId,
+        },
+      },
+    });
   }
 }
