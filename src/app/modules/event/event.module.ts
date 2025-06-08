@@ -26,7 +26,6 @@ import { CommentRatingModule } from './comment_rating/comment-rating.module';
 import { AnnouncementModule } from './announcement/announcement.module';
 import { TaskModule } from './task/task.module';
 
-
 @Module({
   imports: [
     PrismaModule,

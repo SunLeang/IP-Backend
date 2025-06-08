@@ -10,7 +10,7 @@ import { Response } from 'express';
 import { CurrentRole } from '@prisma/client';
 import { UserService } from './user.service';
 import { AuthService } from '../../auth/services/auth.service';
-import { VolunteerService } from '../../event/volunteer/volunteer.service';
+import { VolunteerService } from '../../event/volunteer/services/volunteer.service';
 import { CookieUtil } from '../utils/cookie.util';
 
 @Injectable()
