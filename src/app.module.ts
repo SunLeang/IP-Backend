@@ -14,6 +14,7 @@ import { CommentRatingModule } from './app/modules/event/comment_rating/comment-
 import { AttendanceModule } from './app/modules/event/attendance/attendance.module';
 import { NotificationModule } from './app/modules/notification/notification.module';
 import { TaskModule } from './app/modules/event/task/task.module';
+import { LoggerMiddleware } from './app/core/middleware/logger.middleware';
 
 @Module({
   imports: [
@@ -49,5 +50,6 @@ import { TaskModule } from './app/modules/event/task/task.module';
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(AuthMiddleware).forRoutes('*');
+    consumer.apply(LoggerMiddleware).forRoutes('*');
   }
 }
