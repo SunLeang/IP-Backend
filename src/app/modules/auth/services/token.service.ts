@@ -66,7 +66,7 @@ export class TokenService {
   }
 
   /**
-   * Refresh tokens using refresh token 
+   * Refresh tokens using refresh token
    */
   async refreshTokens(refreshToken: string) {
     try {
@@ -99,6 +99,7 @@ export class TokenService {
           id: true,
           email: true,
           deletedAt: true,
+          systemRole: true,
         },
       });
 
@@ -121,7 +122,14 @@ export class TokenService {
       // Save new refresh token
       await this.saveRefreshToken(user.id, tokens.refreshToken);
 
-      return tokens;
+      return {
+        ...tokens,
+        user: {
+          id: user.id,
+          email: user.email,
+          systemRole: user.systemRole,
+        },
+      };
     } catch (error) {
       console.error('Refresh token error:', error);
       throw new UnauthorizedException('Invalid or expired refresh token');
