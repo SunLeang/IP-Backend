@@ -290,6 +290,7 @@ model EventAttendance {
   registeredBy  String?
   registeredAt  DateTime         @default(now())
   checkedInAt   DateTime?
+  checkedOutAt  DateTime? 
   updatedBy     String?
   updatedAt     DateTime         @updatedAt
 
