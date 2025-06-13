@@ -44,11 +44,20 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
       // Ensure user has a currentRole (set default if null)
       if (!user.currentRole) {
-        await this.prisma.user.update({
+        const updatedUser = await this.prisma.user.update({
           where: { id: user.id },
           data: { currentRole: CurrentRole.ATTENDEE },
+          select: {
+            id: true,
+            email: true,
+            username: true,
+            fullName: true,
+            systemRole: true,
+            currentRole: true,
+            deletedAt: true,
+          },
         });
-        user.currentRole = CurrentRole.ATTENDEE;
+        return updatedUser;
       }
 
       return user;

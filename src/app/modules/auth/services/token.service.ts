@@ -66,73 +66,142 @@ export class TokenService {
   }
 
   /**
+   * Save refresh token within a transaction
+   */
+  private async saveRefreshTokenInTransaction(
+    tx: any,
+    userId: string,
+    token: string,
+  ) {
+    const refreshExpiration =
+      this.configService.get<string>('JWT_REFRESH_EXPIRATION') || '7d';
+    const expiresIn = this.parseExpirationTime(refreshExpiration);
+    const expiresAt = new Date(Date.now() + expiresIn);
+
+    await tx.refreshToken.create({
+      data: {
+        token,
+        userId,
+        expiresAt,
+      },
+    });
+
+    return true;
+  }
+
+  /**
    * Refresh tokens using refresh token
    */
   async refreshTokens(refreshToken: string) {
     try {
+      console.log('🔄 Starting token refresh process...');
+
       // Verify and decode the refresh token
       const payload = this.jwtService.verify(refreshToken, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       });
 
       const userId = payload.sub;
+      console.log(`🔄 Refresh token decoded for user: ${userId}`);
 
-      // Find the refresh token in the database
-      const tokenRecord = await this.prisma.refreshToken.findFirst({
-        where: {
-          userId,
-          token: refreshToken,
-          isRevoked: false,
-          expiresAt: {
-            gt: new Date(),
+      // Use transaction to handle race conditions
+      const result = await this.prisma.$transaction(async (tx) => {
+        // Find the refresh token in the database
+        const tokenRecord = await tx.refreshToken.findFirst({
+          where: {
+            userId,
+            token: refreshToken,
+            isRevoked: false,
+            expiresAt: {
+              gt: new Date(),
+            },
           },
-        },
+        });
+
+        if (!tokenRecord) {
+          console.log('❌ Refresh token not found or expired in database');
+          throw new UnauthorizedException('Invalid or expired refresh token');
+        }
+
+        // Get complete user data
+        const user = await tx.user.findUnique({
+          where: { id: userId },
+          select: {
+            id: true,
+            email: true,
+            username: true,
+            fullName: true,
+            systemRole: true,
+            currentRole: true,
+            gender: true,
+            age: true,
+            org: true,
+            deletedAt: true,
+          },
+        });
+
+        if (!user || user.deletedAt) {
+          console.log('❌ User not found or deleted');
+          throw new UnauthorizedException('User not found or deleted');
+        }
+
+        // Revoke the old refresh token
+        await tx.refreshToken.update({
+          where: { id: tokenRecord.id },
+          data: {
+            isRevoked: true,
+            revokedAt: new Date(),
+          },
+        });
+
+        console.log('✅ Old refresh token revoked');
+
+        // Generate new tokens
+        const tokens = await this.generateTokens(user.id, user.email);
+
+        // Save new refresh token in transaction
+        await this.saveRefreshTokenInTransaction(
+          tx,
+          user.id,
+          tokens.refreshToken,
+        );
+
+        console.log('✅ New tokens generated and saved');
+
+        return {
+          ...tokens,
+          user: {
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            fullName: user.fullName,
+            systemRole: user.systemRole,
+            currentRole: user.currentRole,
+            gender: user.gender,
+            age: user.age,
+            org: user.org,
+          },
+        };
       });
 
-      if (!tokenRecord) {
+      console.log('✅ Token refresh completed successfully');
+      return result;
+    } catch (error) {
+      console.error('❌ Refresh token error:', error);
+
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+
+      // If it's a JWT error, convert to UnauthorizedException
+      if (
+        error.name === 'JsonWebTokenError' ||
+        error.name === 'TokenExpiredError'
+      ) {
         throw new UnauthorizedException('Invalid or expired refresh token');
       }
 
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          id: true,
-          email: true,
-          deletedAt: true,
-          systemRole: true,
-        },
-      });
-
-      if (!user || user.deletedAt) {
-        throw new UnauthorizedException('User not found or deleted');
-      }
-
-      // Revoke the old refresh token
-      await this.prisma.refreshToken.update({
-        where: { id: tokenRecord.id },
-        data: {
-          isRevoked: true,
-          revokedAt: new Date(),
-        },
-      });
-
-      // Generate new tokens
-      const tokens = await this.generateTokens(user.id, user.email);
-
-      // Save new refresh token
-      await this.saveRefreshToken(user.id, tokens.refreshToken);
-
-      return {
-        ...tokens,
-        user: {
-          id: user.id,
-          email: user.email,
-          systemRole: user.systemRole,
-        },
-      };
-    } catch (error) {
-      console.error('Refresh token error:', error);
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      throw new UnauthorizedException('Token refresh failed');
     }
   }
 

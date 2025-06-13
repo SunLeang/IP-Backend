@@ -232,46 +232,35 @@ export const LogoutSwagger = () =>
  **************************************/
 export const RefreshTokenSwagger = () =>
   applyDecorators(
-    ApiOperation({
-      summary: 'Refresh access token',
-      description:
-        'Generate new access and refresh tokens using a valid refresh token',
-    }),
-    ApiBody({
-      type: RefreshTokenDto,
-      examples: {
-        refreshToken: {
-          summary: 'Refresh Token Request',
-          description: 'Send refresh token to get new tokens',
-          value: {
-            refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbHh4eHh4LXh4eHgtNHh4eC14eHh4LXh4eHh4eHh4eHh4eCIsImVtYWlsIjoiam9obi5kb2VAZXhhbXBsZS5jb20iLCJpYXQiOjE3MDk1NjQ0MjcsImV4cCI6MTcxMDE2OTIyN30...'
-          }
-        }
-      }
-    }),
+    ApiOperation({ summary: 'Refresh access token using refresh token' }),
     ApiResponse({
       status: 200,
-      description: 'Tokens refreshed successfully',
+      description: 'Token refreshed successfully',
       schema: {
-        example: {
-          accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-          refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        type: 'object',
+        properties: {
+          accessToken: { type: 'string', description: 'New access token' },
+          refreshToken: { type: 'string', description: 'New refresh token' },
+          user: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              email: { type: 'string' },
+              fullName: { type: 'string' },
+              systemRole: { type: 'string' },
+              currentRole: { type: 'string' },
+            },
+          },
+          message: { type: 'string' },
         },
       },
     }),
     ApiResponse({
       status: 401,
       description: 'Invalid or expired refresh token',
-      schema: {
-        example: {
-          statusCode: 401,
-          message: 'Invalid or expired refresh token',
-          error: 'Unauthorized',
-        },
-      },
     }),
+    ApiBody({ type: RefreshTokenDto }),
   );
-
 
 /**************************************
  * PROFILE ENDPOINT DECORATORS

@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from './services/auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -66,8 +67,35 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  refreshTokens(@Body() refreshTokenDto: RefreshTokenDto) {
-    return this.authService.refreshTokens(refreshTokenDto.refreshToken);
+  async refreshTokens(@Body() refreshTokenDto: RefreshTokenDto) {
+    console.log('🔄 Refresh endpoint called');
+
+    if (!refreshTokenDto.refreshToken) {
+      console.log('❌ No refresh token provided in request body');
+      throw new UnauthorizedException('Refresh token is required');
+    }
+
+    try {
+      const result = await this.authService.refreshTokens(
+        refreshTokenDto.refreshToken,
+      );
+      console.log('✅ Refresh endpoint successful');
+
+      return {
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        user: result.user,
+        message: 'Token refreshed successfully',
+      };
+    } catch (error) {
+      console.error('❌ Refresh endpoint error:', error);
+
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+
+      throw new UnauthorizedException('Failed to refresh token');
+    }
   }
 
   /**************************************
@@ -90,11 +118,20 @@ export class AuthController {
    **************************************/
 
   @GetProfileSwagger()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(SystemRole.USER)
+  @UseGuards(JwtAuthGuard)
   @Get('profile')
-  getProfile(@GetUser() user) {
-    return user;
+  async getProfile(@GetUser() user) {
+    console.log('📋 Profile endpoint called for user:', user.id);
+
+    // Return the user data that was validated by JWT strategy
+    return {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      fullName: user.fullName,
+      systemRole: user.systemRole,
+      currentRole: user.currentRole,
+    };
   }
 
   /**************************************
