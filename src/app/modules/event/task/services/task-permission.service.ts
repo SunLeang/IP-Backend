@@ -3,7 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { SystemRole } from '@prisma/client';
+import { SystemRole, VolunteerStatus } from '@prisma/client';
 import { PrismaService } from '../../../../prisma/services/prisma.service';
 
 @Injectable()
@@ -78,12 +78,27 @@ export class TaskPermissionService {
   ) {
     const event = await this.validateEventAccess(eventId);
 
-    // Only event organizer, admin, or super admin can view all tasks for an event
+    // Check if user is event organizer, admin, or super admin
     if (
-      event.organizerId !== userId &&
-      userRole !== SystemRole.ADMIN &&
-      userRole !== SystemRole.SUPER_ADMIN
+      event.organizerId === userId ||
+      userRole === SystemRole.ADMIN ||
+      userRole === SystemRole.SUPER_ADMIN
     ) {
+      return event;
+    }
+
+    // Check if user is a volunteer for this event
+    const isVolunteer = await this.prisma.eventVolunteer.findUnique({
+      where: {
+        userId_eventId: {
+          userId,
+          eventId,
+        },
+        status: VolunteerStatus.APPROVED,
+      },
+    });
+
+    if (!isVolunteer) {
       throw new ForbiddenException(
         'You do not have permission to view tasks for this event',
       );

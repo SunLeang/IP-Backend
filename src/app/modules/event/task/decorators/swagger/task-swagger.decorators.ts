@@ -532,3 +532,164 @@ export const RemoveTaskAssignmentSwagger = () =>
       example: '123e4567-e89b-12d3-a456-426614174003',
     }),
   );
+
+export const GetEventTasksSwagger = () =>
+  applyDecorators(
+    ApiOperation({ summary: 'Get all tasks for a specific event' }),
+    ApiResponse({
+      status: 200,
+      description: 'Return tasks for the event with pagination',
+      schema: {
+        example: {
+          data: [
+            {
+              id: '123e4567-e89b-12d3-a456-426614174000',
+              name: 'Setup registration booth',
+              description:
+                'Set up the registration booth and welcome attendees',
+              type: 'Setup',
+              status: 'PENDING',
+              dueDate: '2025-02-15T08:00:00Z',
+              createdAt: '2025-01-15T10:30:00Z',
+              updatedAt: '2025-01-15T10:30:00Z',
+              event: {
+                id: '123e4567-e89b-12d3-a456-426614174001',
+                name: 'Tech Conference 2025',
+                organizerId: '123e4567-e89b-12d3-a456-426614174002',
+              },
+              assignments: [
+                {
+                  id: '123e4567-e89b-12d3-a456-426614174003',
+                  status: 'PENDING',
+                  assignedAt: '2025-01-16T14:00:00Z',
+                  volunteer: {
+                    id: '123e4567-e89b-12d3-a456-426614174004',
+                    fullName: 'John Volunteer',
+                    email: 'john@example.com',
+                  },
+                  assignedBy: {
+                    id: '123e4567-e89b-12d3-a456-426614174002',
+                    fullName: 'Jane Organizer',
+                  },
+                },
+              ],
+            },
+          ],
+          meta: {
+            total: 8,
+            skip: 0,
+            take: 10,
+            hasMore: false,
+          },
+        },
+      },
+    }),
+    ApiResponse({
+      status: 403,
+      description: 'Forbidden - not authorized to view tasks',
+    }),
+    ApiResponse({ status: 404, description: 'Event not found' }),
+    ApiParam({
+      name: 'eventId',
+      description: 'Event ID',
+      example: '123e4567-e89b-12d3-a456-426614174001',
+    }),
+    ApiQuery({
+      name: 'status',
+      required: false,
+      description: 'Filter by task status',
+      enum: ['PENDING', 'IN_PROGRESS', 'COMPLETED'],
+      example: 'PENDING',
+    }),
+    ApiQuery({
+      name: 'search',
+      required: false,
+      description: 'Search by task name or description',
+      example: 'registration',
+    }),
+    ApiQuery({
+      name: 'skip',
+      required: false,
+      description: 'Number of records to skip',
+      example: 0,
+    }),
+    ApiQuery({
+      name: 'take',
+      required: false,
+      description: 'Number of records to take',
+      example: 10,
+    }),
+  );
+
+export const GetMyEventTasksSwagger = () =>
+  applyDecorators(
+    ApiOperation({ summary: 'Get my assigned tasks for a specific event' }),
+    ApiResponse({
+      status: 200,
+      description: 'Return volunteer assigned tasks for the event',
+      schema: {
+        example: {
+          data: [
+            {
+              id: '123e4567-e89b-12d3-a456-426614174003',
+              status: 'IN_PROGRESS',
+              assignedAt: '2025-01-16T14:00:00Z',
+              task: {
+                id: '123e4567-e89b-12d3-a456-426614174000',
+                name: 'Setup registration booth',
+                description:
+                  'Set up the registration booth and welcome attendees',
+                type: 'Setup',
+                status: 'IN_PROGRESS',
+                dueDate: '2025-02-15T08:00:00Z',
+                event: {
+                  id: '123e4567-e89b-12d3-a456-426614174001',
+                  name: 'Tech Conference 2025',
+                },
+              },
+              assignedBy: {
+                id: '123e4567-e89b-12d3-a456-426614174002',
+                fullName: 'Jane Organizer',
+              },
+            },
+          ],
+          meta: {
+            total: 2,
+            skip: 0,
+            take: 10,
+            hasMore: false,
+          },
+        },
+      },
+    }),
+    ApiParam({
+      name: 'eventId',
+      description: 'Event ID',
+      example: '123e4567-e89b-12d3-a456-426614174001',
+    }),
+    ApiQuery({
+      name: 'status',
+      required: false,
+      description: 'Filter by task status',
+      enum: ['PENDING', 'IN_PROGRESS', 'COMPLETED'],
+      example: 'IN_PROGRESS',
+    }),
+    ApiQuery({
+      name: 'search',
+      required: false,
+      description: 'Search by task name or description',
+      example: 'registration',
+    }),
+    ApiQuery({
+      name: 'skip',
+      required: false,
+      description: 'Number of records to skip',
+      example: 0,
+    }),
+    ApiQuery({
+      name: 'take',
+      required: false,
+      description: 'Number of records to take',
+      example: 10,
+    }),
+  );

@@ -10,6 +10,8 @@ import { TaskPermissionService } from './services/task-permission.service';
 import { TaskQueryService } from './services/task-query.service';
 import { TaskAssignmentService } from './services/task-assignment.service';
 import { TaskNotificationService } from './services/task-notification.service';
+import { TaskAssignmentQueryService } from './services/task-assignment-query.service';
+import { TaskVolunteerQueryService } from './services/task-volunteer-query.service';
 
 @Module({
   imports: [PrismaModule, NotificationModule],
@@ -21,6 +23,8 @@ import { TaskNotificationService } from './services/task-notification.service';
     TaskQueryService,
     TaskAssignmentService,
     TaskNotificationService,
+    TaskAssignmentQueryService,
+    TaskVolunteerQueryService,
   ],
   exports: [
     TaskService,
@@ -29,6 +33,8 @@ import { TaskNotificationService } from './services/task-notification.service';
     TaskQueryService,
     TaskAssignmentService,
     TaskNotificationService,
+    TaskAssignmentQueryService,
+    TaskVolunteerQueryService,
   ],
 })
 export class TaskModule {}

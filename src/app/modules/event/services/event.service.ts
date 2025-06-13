@@ -1,12 +1,22 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../../prisma/services/prisma.service';
 import { CreateEventDto } from '../dto/create-event.dto';
 import { UpdateEventDto } from '../dto/update-event.dto';
 import { EventStatus, SystemRole } from '@prisma/client';
+import { EventQueryService } from './event-query.service';
+import { EventPermissionService } from './event-permission.service';
 
 @Injectable()
 export class EventService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly queryService: EventQueryService,
+    private readonly permissionService: EventPermissionService,
+  ) {}
 
   /**************************************
    * CORE CRUD OPERATIONS
@@ -156,5 +166,46 @@ export class EventService {
     }
 
     return event;
+  }
+
+  /**************************************
+   * PERMISSION-AWARE DATA ACCESS METHODS
+   **************************************/
+
+  /**
+   * Get attendees for an event with permission validation
+   */
+  async getEventAttendees(
+    eventId: string,
+    userId: string,
+    userRole: SystemRole,
+    query?: { skip?: number; take?: number; search?: string; status?: any },
+  ) {
+    // Validate permissions
+    await this.permissionService.validateAttendeeViewPermission(
+      eventId,
+      userId,
+      userRole,
+    );
+
+    return this.queryService.getEventAttendees(eventId, query);
+  }
+
+  /**
+   * Get volunteers for an event with permission validation
+   */
+  async getEventVolunteers(
+    eventId: string,
+    userId: string,
+    userRole: SystemRole,
+  ) {
+    // Validate permissions
+    await this.permissionService.validateVolunteerViewPermission(
+      eventId,
+      userId,
+      userRole,
+    );
+
+    return this.queryService.getEventVolunteers(eventId);
   }
 }

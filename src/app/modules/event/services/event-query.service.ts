@@ -67,29 +67,68 @@ export class EventQueryService {
     });
   }
 
-  async getEventAttendees(id: string) {
-    return this.prisma.eventAttendance.findMany({
-      where: { eventId: id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            gender: true,
-            age: true,
-            org: true,
-            currentRole: true,
+  async getEventAttendees(
+    eventId: string,
+    query?: { skip?: number; take?: number; search?: string; status?: any },
+  ) {
+    const { skip = 0, take = 100, search, status } = query || {};
+
+    // Build where clause
+    const where: any = { eventId };
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (search) {
+      where.user = {
+        OR: [
+          { fullName: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+          { username: { contains: search, mode: 'insensitive' } },
+        ],
+      };
+    }
+
+    // Get attendees with pagination
+    const [attendees, total] = await Promise.all([
+      this.prisma.eventAttendance.findMany({
+        where,
+        skip: Number(skip),
+        take: Number(take),
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              username: true,
+              gender: true,
+              age: true,
+              org: true,
+            },
           },
         },
+        orderBy: [{ status: 'asc' }, { updatedAt: 'desc' }],
+      }),
+      this.prisma.eventAttendance.count({ where }),
+    ]);
+
+    return {
+      data: attendees,
+      meta: {
+        total,
+        skip: Number(skip),
+        take: Number(take),
+        hasMore: Number(skip) + Number(take) < total,
       },
-    });
+    };
   }
 
-  async getEventVolunteers(id: string) {
+  async getEventVolunteers(eventId: string) {
     return this.prisma.eventVolunteer.findMany({
       where: {
-        eventId: id,
+        eventId,
         status: 'APPROVED',
       },
       include: {

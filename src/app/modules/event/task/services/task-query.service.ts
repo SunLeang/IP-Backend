@@ -3,12 +3,16 @@ import { SystemRole, VolunteerStatus } from '@prisma/client';
 import { PrismaService } from '../../../../prisma/services/prisma.service';
 import { TaskQueryDto } from '../dto/task-query.dto';
 import { TaskPermissionService } from './task-permission.service';
+import { TaskVolunteerQueryService } from './task-volunteer-query.service';
+import { TaskAssignmentQueryService } from './task-assignment-query.service';
 
 @Injectable()
 export class TaskQueryService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissionService: TaskPermissionService,
+    private readonly volunteerQueryService: TaskVolunteerQueryService,
+    private readonly assignmentQueryService: TaskAssignmentQueryService,
   ) {}
 
   /**************************************
@@ -40,10 +44,9 @@ export class TaskQueryService {
     } else {
       // If no eventId specified, filter based on user role
       if (userRole === SystemRole.USER) {
-        // Regular users can only see tasks from events they organize
-        where.event = {
-          organizerId: userId,
-        };
+        // Get events where user is organizer OR volunteer
+        const eventIds = await this.getUserAccessibleEventIds(userId);
+        where.eventId = { in: eventIds };
       }
     }
 
@@ -54,120 +57,41 @@ export class TaskQueryService {
       ];
     }
 
-    const [tasks, total] = await Promise.all([
-      this.prisma.task.findMany({
-        where,
-        skip: Number(skip),
-        take: Number(take),
-        orderBy: { dueDate: 'asc' },
-        include: {
-          event: {
-            select: {
-              id: true,
-              name: true,
-              organizerId: true,
-            },
-          },
-          assignments: {
-            include: {
-              volunteer: {
-                select: {
-                  id: true,
-                  fullName: true,
-                  email: true,
-                },
-              },
-              assignedBy: {
-                select: {
-                  id: true,
-                  fullName: true,
-                },
-              },
-            },
-          },
-        },
-      }),
-      this.prisma.task.count({ where }),
-    ]);
-
-    return {
-      data: tasks,
-      meta: {
-        total,
-        skip: Number(skip),
-        take: Number(take),
-        hasMore: Number(skip) + Number(take) < total,
-      },
-    };
+    return this.getTasksWithPagination(where, skip, take);
   }
 
   /**
-   * Get tasks assigned to the current volunteer
+   * Get all tasks for a specific event
    */
-  async getMyTasks(userId: string, query: TaskQueryDto) {
-    const { status, eventId, search, skip = 0, take = 10 } = query;
+  async getEventTasks(
+    eventId: string,
+    userId: string,
+    userRole: SystemRole,
+    query: TaskQueryDto,
+  ) {
+    // Validate permissions
+    await this.permissionService.validateTaskViewPermission(
+      eventId,
+      userId,
+      userRole,
+    );
 
-    const where: any = {
-      volunteerId: userId,
-    };
+    const { status, search, skip = 0, take = 10 } = query;
+
+    const where: any = { eventId };
 
     if (status) {
       where.status = status;
     }
 
-    if (eventId) {
-      where.task = {
-        eventId,
-      };
-    }
-
     if (search) {
-      where.task = {
-        ...where.task,
-        OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-        ],
-      };
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
     }
 
-    const [assignments, total] = await Promise.all([
-      this.prisma.taskAssignment.findMany({
-        where,
-        skip: Number(skip),
-        take: Number(take),
-        orderBy: { task: { dueDate: 'asc' } },
-        include: {
-          task: {
-            include: {
-              event: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-          },
-          assignedBy: {
-            select: {
-              id: true,
-              fullName: true,
-            },
-          },
-        },
-      }),
-      this.prisma.taskAssignment.count({ where }),
-    ]);
-
-    return {
-      data: assignments,
-      meta: {
-        total,
-        skip: Number(skip),
-        take: Number(take),
-        hasMore: Number(skip) + Number(take) < total,
-      },
-    };
+    return this.getTasksWithPagination(where, skip, take);
   }
 
   /**
@@ -213,43 +137,108 @@ export class TaskQueryService {
   }
 
   /**************************************
-   * VOLUNTEER QUERIES
+   * DELEGATED METHODS
    **************************************/
 
   /**
-   * Get volunteers available for task assignment in a specific event
+   * Get tasks assigned to the current volunteer (Delegated)
+   */
+  async getMyTasks(userId: string, query: TaskQueryDto) {
+    return this.assignmentQueryService.getMyTasks(userId, query);
+  }
+
+  /**
+   * Get volunteer's tasks for a specific event (Delegated)
+   */
+  async getMyEventTasks(eventId: string, userId: string, query: TaskQueryDto) {
+    return this.assignmentQueryService.getMyEventTasks(eventId, userId, query);
+  }
+
+  /**
+   * Get volunteers available for task assignment (Delegated)
    */
   async getAvailableVolunteers(
     eventId: string,
     userId: string,
     userRole: SystemRole,
   ) {
-    // Validate permissions
-    await this.permissionService.validateVolunteerViewPermission(
+    return this.volunteerQueryService.getAvailableVolunteers(
       eventId,
       userId,
       userRole,
     );
+  }
 
-    // Get approved volunteers for this event
-    const volunteers = await this.prisma.eventVolunteer.findMany({
-      where: {
-        eventId,
-        status: VolunteerStatus.APPROVED,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            age: true,
-            org: true,
+  /**************************************
+   * PRIVATE HELPER METHODS
+   **************************************/
+
+  private async getUserAccessibleEventIds(userId: string): Promise<string[]> {
+    const [organizedEvents, volunteerEvents] = await Promise.all([
+      this.prisma.event.findMany({
+        where: { organizerId: userId },
+        select: { id: true },
+      }),
+      this.prisma.eventVolunteer.findMany({
+        where: {
+          userId,
+          status: VolunteerStatus.APPROVED,
+        },
+        select: { eventId: true },
+      }),
+    ]);
+
+    return [
+      ...organizedEvents.map((e) => e.id),
+      ...volunteerEvents.map((v) => v.eventId),
+    ];
+  }
+
+  private async getTasksWithPagination(where: any, skip: number, take: number) {
+    const [tasks, total] = await Promise.all([
+      this.prisma.task.findMany({
+        where,
+        skip: Number(skip),
+        take: Number(take),
+        orderBy: { dueDate: 'asc' },
+        include: {
+          event: {
+            select: {
+              id: true,
+              name: true,
+              organizerId: true,
+            },
+          },
+          assignments: {
+            include: {
+              volunteer: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                },
+              },
+              assignedBy: {
+                select: {
+                  id: true,
+                  fullName: true,
+                },
+              },
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.task.count({ where }),
+    ]);
 
-    return volunteers.map((ev) => ev.user);
+    return {
+      data: tasks,
+      meta: {
+        total,
+        skip: Number(skip),
+        take: Number(take),
+        hasMore: Number(skip) + Number(take) < total,
+      },
+    };
   }
 }

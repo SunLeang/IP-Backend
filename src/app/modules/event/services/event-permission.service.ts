@@ -1,8 +1,15 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
-import { SystemRole } from '@prisma/client';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
+import { SystemRole, VolunteerStatus } from '@prisma/client';
+import { PrismaService } from '../../../prisma/services/prisma.service';
 
 @Injectable()
 export class EventPermissionService {
+  constructor(private readonly prisma: PrismaService) {}
+
   /**************************************
    * PERMISSION VALIDATION METHODS
    **************************************/
@@ -98,5 +105,125 @@ export class EventPermissionService {
   // Helper method to check if user is regular user
   isRegularUser(userRole: SystemRole): boolean {
     return userRole === SystemRole.USER;
+  }
+
+  /**
+   * Check if user can view event attendees
+   */
+  async validateAttendeeViewPermission(
+    eventId: string,
+    userId: string,
+    userRole: SystemRole,
+  ) {
+    // Check if event exists
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId, deletedAt: null },
+      select: {
+        id: true,
+        name: true,
+        organizerId: true,
+      },
+    });
+
+    if (!event) {
+      throw new NotFoundException(`Event with ID ${eventId} not found`);
+    }
+
+    // Check permissions
+    if (userRole === SystemRole.SUPER_ADMIN) {
+      // Super admin can view attendees for any event
+      return event;
+    }
+
+    // Check if user is event organizer (for ADMINs, they can only access events they organized)
+    if (event.organizerId === userId) {
+      return event;
+    }
+
+    // For ADMIN role - they can only access events they organize
+    if (userRole === SystemRole.ADMIN) {
+      throw new ForbiddenException(
+        'You can only view attendees for events you organize',
+      );
+    }
+
+    // Check if user is a volunteer for this event
+    const isVolunteer = await this.prisma.eventVolunteer.findUnique({
+      where: {
+        userId_eventId: {
+          userId,
+          eventId,
+        },
+        status: VolunteerStatus.APPROVED,
+      },
+    });
+
+    if (!isVolunteer) {
+      throw new ForbiddenException(
+        'You do not have permission to view attendees for this event',
+      );
+    }
+
+    return event;
+  }
+
+  /**
+   * Check if user can view event volunteers
+   */
+  async validateVolunteerViewPermission(
+    eventId: string,
+    userId: string,
+    userRole: SystemRole,
+  ) {
+    // Check if event exists
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId, deletedAt: null },
+      select: {
+        id: true,
+        name: true,
+        organizerId: true,
+      },
+    });
+
+    if (!event) {
+      throw new NotFoundException(`Event with ID ${eventId} not found`);
+    }
+
+    // Check permissions
+    if (userRole === SystemRole.SUPER_ADMIN) {
+      // Super admin can view volunteers for any event
+      return event;
+    }
+
+    // Check if user is event organizer (for ADMINs, they can only access events they organized)
+    if (event.organizerId === userId) {
+      return event;
+    }
+
+    // For ADMIN role - they can only access events they organize
+    if (userRole === SystemRole.ADMIN) {
+      throw new ForbiddenException(
+        'You can only view volunteers for events you organize',
+      );
+    }
+
+    // Check if user is a volunteer for this event
+    const isVolunteer = await this.prisma.eventVolunteer.findUnique({
+      where: {
+        userId_eventId: {
+          userId,
+          eventId,
+        },
+        status: VolunteerStatus.APPROVED,
+      },
+    });
+
+    if (!isVolunteer) {
+      throw new ForbiddenException(
+        'You do not have permission to view volunteers for this event',
+      );
+    }
+
+    return event;
   }
 }

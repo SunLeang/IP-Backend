@@ -38,8 +38,21 @@ export class TaskService {
     return this.queryService.findAll(query, userId, userRole);
   }
 
+  async getEventTasks(
+    eventId: string,
+    userId: string,
+    userRole: SystemRole,
+    query: TaskQueryDto,
+  ) {
+    return this.queryService.getEventTasks(eventId, userId, userRole, query);
+  }
+
   async getMyTasks(userId: string, query: TaskQueryDto) {
     return this.queryService.getMyTasks(userId, query);
+  }
+
+  async getMyEventTasks(eventId: string, userId: string, query: TaskQueryDto) {
+    return this.queryService.getMyEventTasks(eventId, userId, query);
   }
 
   async findOne(id: string, userId: string, userRole: SystemRole) {

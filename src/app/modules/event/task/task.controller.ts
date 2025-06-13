@@ -35,6 +35,8 @@ import {
   AssignTaskSwagger,
   UpdateTaskAssignmentSwagger,
   RemoveTaskAssignmentSwagger,
+  GetEventTasksSwagger,
+  GetMyEventTasksSwagger,
 } from './decorators/swagger';
 
 /**************************************
@@ -74,12 +76,39 @@ export class TaskController {
   }
 
   /**************************************
+   * GET TASKS BY EVENT ENDPOINT
+   **************************************/
+  @GetEventTasksSwagger()
+  @Get('events/:eventId')
+  getEventTasks(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @GetUser('id') userId: string,
+    @GetUser('systemRole') userRole: SystemRole,
+    @Query() query: TaskQueryDto,
+  ) {
+    return this.taskService.getEventTasks(eventId, userId, userRole, query);
+  }
+
+  /**************************************
    * GET MY TASKS ENDPOINT (FOR VOLUNTEERS)
    **************************************/
   @GetMyTasksSwagger()
   @Get('my-tasks')
   getMyTasks(@GetUser('id') userId: string, @Query() query: TaskQueryDto) {
     return this.taskService.getMyTasks(userId, query);
+  }
+
+  /**************************************
+   * GET MY TASKS IN SPECIFIC EVENT (FOR VOLUNTEERS)
+   **************************************/
+  @GetMyEventTasksSwagger()
+  @Get('events/:eventId/my-tasks')
+  getMyEventTasks(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @GetUser('id') userId: string,
+    @Query() query: TaskQueryDto,
+  ) {
+    return this.taskService.getMyEventTasks(eventId, userId, query);
   }
 
   /**************************************

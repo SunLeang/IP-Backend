@@ -149,15 +149,21 @@ export class EventController {
 
   @GetEventAttendeesSwagger()
   @Get(':id/attendees')
-  @Roles(SystemRole.ADMIN, SystemRole.SUPER_ADMIN)
-  getEventAttendees(@Param('id') id: string) {
-    return this.eventAdminService.getEventAttendees(id);
+  getEventAttendees(
+    @Param('id') id: string,
+    @GetUser('id') userId: string,
+    @GetUser('systemRole') userRole: SystemRole,
+  ) {
+    return this.eventService.getEventAttendees(id, userId, userRole);
   }
 
   @GetEventVolunteersSwagger()
   @Get(':id/volunteers')
-  @Roles(SystemRole.ADMIN, SystemRole.SUPER_ADMIN)
-  getEventVolunteers(@Param('id') id: string) {
-    return this.eventAdminService.getEventVolunteers(id);
+  getEventVolunteers(
+    @Param('id') id: string,
+    @GetUser('id') userId: string,
+    @GetUser('systemRole') userRole: SystemRole,
+  ) {
+    return this.eventService.getEventVolunteers(id, userId, userRole);
   }
 }
