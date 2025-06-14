@@ -182,17 +182,87 @@ export class TaskPermissionService {
     );
 
     if (
-      !isEventOrganizer &&
-      !isAssignedVolunteer &&
-      userRole !== SystemRole.ADMIN &&
-      userRole !== SystemRole.SUPER_ADMIN
+      isEventOrganizer ||
+      isAssignedVolunteer ||
+      userRole === SystemRole.ADMIN ||
+      userRole === SystemRole.SUPER_ADMIN
     ) {
+      return task;
+    }
+
+    // Check if user is a volunteer for this event (even if not assigned to this specific task)
+    const isVolunteer = await this.prisma.eventVolunteer.findUnique({
+      where: {
+        userId_eventId: {
+          userId,
+          eventId: task.event.id,
+        },
+        status: VolunteerStatus.APPROVED,
+      },
+    });
+
+    if (!isVolunteer) {
       throw new ForbiddenException(
         'You do not have permission to view this task',
       );
     }
 
     return task;
+  }
+
+  /**
+   * Check if user can update task assignment (volunteers can update their own assignments)
+   */
+  async validateTaskAssignmentUpdatePermission(
+    assignmentId: string,
+    userId: string,
+    userRole: SystemRole,
+  ) {
+    const assignment = await this.prisma.taskAssignment.findUnique({
+      where: { id: assignmentId },
+      include: {
+        task: {
+          include: {
+            event: {
+              select: {
+                id: true,
+                name: true,
+                organizerId: true,
+              },
+            },
+          },
+        },
+        volunteer: {
+          select: {
+            id: true,
+            fullName: true,
+          },
+        },
+      },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException(
+        `Assignment with ID ${assignmentId} not found`,
+      );
+    }
+
+    // Check permissions
+    const isAssignedVolunteer = assignment.volunteerId === userId;
+    const isEventOrganizer = assignment.task.event.organizerId === userId;
+
+    if (
+      !isAssignedVolunteer &&
+      !isEventOrganizer &&
+      userRole !== SystemRole.ADMIN &&
+      userRole !== SystemRole.SUPER_ADMIN
+    ) {
+      throw new ForbiddenException(
+        'You do not have permission to update this assignment',
+      );
+    }
+
+    return assignment;
   }
 
   /**************************************

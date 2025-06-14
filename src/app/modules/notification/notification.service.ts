@@ -133,13 +133,43 @@ export class NotificationService {
     eventId: string,
     type: NotificationType,
     message: string,
-  ): Promise<Notification> {
-    return this.create({
-      userId,
-      eventId,
-      type,
-      message,
-    });
+  ): Promise<Notification | null> {
+    if (!userId || !eventId || !message) {
+      console.error(
+        'Cannot create event notification: missing required fields',
+      );
+      return null;
+    }
+
+    try {
+      return await this.prisma.notification.create({
+        data: {
+          type,
+          message,
+          user: {
+            connect: {
+              id: userId,
+            },
+          },
+          event: {
+            connect: {
+              id: eventId,
+            },
+          },
+        },
+        include: {
+          event: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Failed to create event notification:', error);
+      return null;
+    }
   }
 
   /**
@@ -168,29 +198,151 @@ export class NotificationService {
     applicationId: string,
     eventId: string,
     message: string,
-  ): Promise<Notification> {
-    return this.create({
-      userId,
-      applicationId,
-      eventId,
-      type: NotificationType.APPLICATION_UPDATE,
-      message,
-    });
+  ): Promise<Notification | null> {
+    if (!userId || !applicationId || !eventId || !message) {
+      console.error(
+        'Cannot create application notification: missing required fields',
+      );
+      return null;
+    }
+
+    try {
+      return await this.prisma.notification.create({
+        data: {
+          type: NotificationType.APPLICATION_UPDATE,
+          message,
+          user: {
+            connect: {
+              id: userId,
+            },
+          },
+          application: {
+            connect: {
+              id: applicationId,
+            },
+          },
+          event: {
+            connect: {
+              id: eventId,
+            },
+          },
+        },
+        include: {
+          event: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          application: {
+            select: {
+              id: true,
+              status: true,
+              event: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Failed to create application notification:', error);
+      return null;
+    }
   }
 
   /**
-   * Create notification for task assignments
+   * Create a task-related notification
    */
   async createTaskNotification(
     userId: string,
     taskId: string,
     message: string,
-  ) {
-    return this.prisma.notification.create({
-      data: {
-        type: NotificationType.TASK_ASSIGNMENT,
-        message,
-        user: { connect: { id: userId } },
+  ): Promise<Notification | null> {
+    // Validate inputs
+    if (!userId) {
+      console.error('Cannot create task notification: userId is required');
+      throw new Error('User ID is required for task notification');
+    }
+
+    if (!taskId) {
+      console.error('Cannot create task notification: taskId is required');
+      throw new Error('Task ID is required for task notification');
+    }
+
+    if (!message) {
+      console.error('Cannot create task notification: message is required');
+      throw new Error('Message is required for task notification');
+    }
+
+    console.log('Creating task notification:', {
+      userId,
+      taskId,
+      message: message.substring(0, 50) + '...',
+    });
+
+    try {
+      return await this.prisma.notification.create({
+        data: {
+          type: NotificationType.TASK_ASSIGNMENT,
+          message,
+          user: {
+            connect: {
+              id: userId,
+            },
+          },
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+            },
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Failed to create task notification:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user notifications with pagination
+   */
+  async getUserNotifications(userId: string, limit: number = 50) {
+    return this.prisma.notification.findMany({
+      where: { userId },
+      orderBy: { sentAt: 'desc' },
+      take: limit,
+      include: {
+        event: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        application: {
+          select: {
+            id: true,
+            event: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        announcement: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
       },
     });
   }

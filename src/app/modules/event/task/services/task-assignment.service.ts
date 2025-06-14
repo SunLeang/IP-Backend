@@ -9,12 +9,14 @@ import { PrismaService } from '../../../../prisma/services/prisma.service';
 import { AssignTaskDto } from '../dto/assign-task.dto';
 import { UpdateTaskAssignmentDto } from '../dto/update-task-assignment.dto';
 import { TaskNotificationService } from './task-notification.service';
+import { TaskPermissionService } from './task-permission.service';
 
 @Injectable()
 export class TaskAssignmentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationService: TaskNotificationService,
+    private readonly permissionService: TaskPermissionService,
   ) {}
 
   /**************************************
@@ -136,7 +138,7 @@ export class TaskAssignmentService {
    **************************************/
 
   /**
-   * Update task assignment status (Only assigned volunteer can update)
+   * Update task assignment status (volunteers can update their own assignments)
    */
   async updateAssignment(
     assignmentId: string,
@@ -144,8 +146,52 @@ export class TaskAssignmentService {
     userId: string,
     userRole: SystemRole,
   ) {
-    const assignment = await this.prisma.taskAssignment.findUnique({
+    console.log('🔄 Starting assignment update');
+    console.log('Assignment ID:', assignmentId);
+    console.log('Update data:', updateDto);
+    console.log('User ID:', userId);
+    console.log('User role:', userRole);
+
+    // Use centralized permission validation
+    const assignment =
+      await this.permissionService.validateTaskAssignmentUpdatePermission(
+        assignmentId,
+        userId,
+        userRole,
+      );
+
+    console.log('✅ Permission validation passed');
+
+    // Volunteers can only update status, not other fields
+    const isVolunteer =
+      assignment.volunteerId === userId && userRole === SystemRole.USER;
+
+    let updateData: any = {};
+
+    if (isVolunteer) {
+      // Volunteers can only update status (no completedAt field in schema)
+      if (updateDto.status) {
+        updateData.status = updateDto.status;
+      }
+    } else {
+      // Event organizers/admins can update all allowed fields
+      if (updateDto.status) {
+        updateData.status = updateDto.status;
+      }
+    }
+
+    // Only update if there's something to update
+    if (Object.keys(updateData).length === 0) {
+      console.log('⚠️ No valid fields to update');
+      throw new BadRequestException('No valid fields provided for update');
+    }
+
+    console.log('📝 Update data prepared:', updateData);
+
+    // Update assignment with comprehensive include
+    const updatedAssignment = await this.prisma.taskAssignment.update({
       where: { id: assignmentId },
+      data: updateData,
       include: {
         task: {
           include: {
@@ -162,51 +208,7 @@ export class TaskAssignmentService {
           select: {
             id: true,
             fullName: true,
-          },
-        },
-      },
-    });
-
-    if (!assignment) {
-      throw new NotFoundException(
-        `Assignment with ID ${assignmentId} not found`,
-      );
-    }
-
-    // Check permissions - only assigned volunteer or event organizer/admin
-    const isAssignedVolunteer = assignment.volunteerId === userId;
-    const isEventOrganizer = assignment.task.event.organizerId === userId;
-
-    if (
-      !isAssignedVolunteer &&
-      !isEventOrganizer &&
-      userRole !== SystemRole.ADMIN &&
-      userRole !== SystemRole.SUPER_ADMIN
-    ) {
-      throw new ForbiddenException(
-        'You do not have permission to update this assignment',
-      );
-    }
-
-    // Update assignment
-    const updatedAssignment = await this.prisma.taskAssignment.update({
-      where: { id: assignmentId },
-      data: updateDto,
-      include: {
-        task: {
-          include: {
-            event: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-        volunteer: {
-          select: {
-            id: true,
-            fullName: true,
+            email: true,
           },
         },
         assignedBy: {
@@ -218,8 +220,22 @@ export class TaskAssignmentService {
       },
     });
 
+    console.log('✅ Assignment updated successfully');
+    console.log('Updated assignment structure:', {
+      hasTask: !!updatedAssignment.task,
+      hasEvent: !!updatedAssignment.task?.event,
+      hasOrganizer: !!updatedAssignment.task?.event?.organizerId,
+      hasVolunteer: !!updatedAssignment.volunteer,
+      organizerId: updatedAssignment.task?.event?.organizerId,
+      volunteerId: updatedAssignment.volunteerId,
+      volunteerName: updatedAssignment.volunteer?.fullName,
+      newStatus: updatedAssignment.status,
+    });
+
     // Notify event organizer if volunteer updated the status
+    const isAssignedVolunteer = assignment.volunteerId === userId;
     if (isAssignedVolunteer && updateDto.status) {
+      console.log('🔔 Triggering status update notification');
       await this.notificationService.notifyAssignmentStatusUpdate(
         updatedAssignment,
       );
