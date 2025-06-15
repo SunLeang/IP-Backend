@@ -11,6 +11,7 @@ import { VolunteerApplicationService } from './services/volunteer-application.se
 import { VolunteerCoreService } from './services/volunteer-core.service';
 import { VolunteerPermissionService } from './services/volunteer-permission.service';
 import { VolunteerNotificationService } from './services/volunteer-notification.service';
+import { VolunteerHistoryService } from './services/volunteer-history.service';
 
 @Module({
   imports: [PrismaModule, NotificationModule],
@@ -22,6 +23,7 @@ import { VolunteerNotificationService } from './services/volunteer-notification.
     VolunteerCoreService,
     VolunteerPermissionService,
     VolunteerNotificationService,
+    VolunteerHistoryService,
   ],
   exports: [
     VolunteerService,
@@ -30,6 +32,7 @@ import { VolunteerNotificationService } from './services/volunteer-notification.
     VolunteerCoreService,
     VolunteerPermissionService,
     VolunteerNotificationService,
+    VolunteerHistoryService,
   ],
 })
 export class VolunteerModule {}

@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { VolunteerService } from './services/volunteer.service';
 import { CreateVolunteerApplicationDto } from './dto/create-volunteer-application.dto';
@@ -15,7 +16,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/app/core/guards/roles.guard';
 import { GetUser } from 'src/app/core/decorators/get-user.decorator';
 import { Roles } from 'src/app/core/decorators/roles.decorator';
-import { SystemRole } from '@prisma/client';
+import { SystemRole, EventStatus } from '@prisma/client';
 
 // Import Swagger decorators
 import {
@@ -28,6 +29,7 @@ import {
   GetEventVolunteersSwagger,
   RemoveVolunteerSwagger,
   GetDashboardStatsSwagger,
+  GetVolunteerHistorySwagger,
 } from './decorators/swagger';
 
 /**************************************
@@ -134,5 +136,40 @@ export class VolunteerController {
   @Get('dashboard/stats')
   async getDashboardStats(@GetUser('id') userId: string) {
     return this.volunteerService.getDashboardStats(userId);
+  }
+
+  /**************************************
+   * VOLUNTEER HISTORY OPERATIONS
+   **************************************/
+
+  @GetVolunteerHistorySwagger()
+  @Get('history')
+  async getVolunteerHistory(
+    @GetUser('id') userId: string,
+    @Query('status') status?: string, // Change from EventStatus to string for validation
+    @Query('search') search?: string,
+  ) {
+    // Validate and convert status
+    let validStatus: EventStatus | undefined;
+    if (status && Object.values(EventStatus).includes(status as EventStatus)) {
+      validStatus = status as EventStatus;
+    }
+
+    return this.volunteerService.getVolunteerHistory(userId, {
+      status: validStatus,
+      search: search && search !== 'undefined' ? search : undefined,
+    });
+  }
+
+  /**************************************
+   * VOLUNTEER HISTORY DETAIL
+   **************************************/
+
+  @Get('history/:eventId')
+  async getVolunteerHistoryDetail(
+    @GetUser('id') userId: string,
+    @Param('eventId') eventId: string,
+  ) {
+    return this.volunteerService.getVolunteerHistoryDetail(userId, eventId);
   }
 }

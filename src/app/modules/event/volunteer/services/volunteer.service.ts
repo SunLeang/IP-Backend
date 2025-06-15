@@ -5,7 +5,10 @@ import { UpdateVolunteerApplicationDto } from '../dto/update-volunteer-applicati
 import { VolunteerApplicationService } from './volunteer-application.service';
 import { VolunteerCoreService } from './volunteer-core.service';
 import { VolunteerQueryService } from './volunteer-query.service';
-
+import {
+  VolunteerHistoryService,
+  VolunteerHistoryQuery,
+} from './volunteer-history.service';
 
 @Injectable()
 export class VolunteerService {
@@ -13,6 +16,7 @@ export class VolunteerService {
     private readonly queryService: VolunteerQueryService,
     private readonly applicationService: VolunteerApplicationService,
     private readonly coreService: VolunteerCoreService,
+    private readonly historyService: VolunteerHistoryService,
   ) {}
 
   /**************************************
@@ -88,5 +92,17 @@ export class VolunteerService {
 
   async getDashboardStats(userId: string) {
     return this.coreService.getDashboardStats(userId);
+  }
+
+  /**************************************
+   * VOLUNTEER HISTORY OPERATIONS (DELEGATED)
+   **************************************/
+
+  async getVolunteerHistory(userId: string, query: VolunteerHistoryQuery) {
+    return this.historyService.getVolunteerHistory(userId, query);
+  }
+
+  async getVolunteerHistoryDetail(userId: string, eventId: string) {
+    return this.historyService.getVolunteerEventDetail(userId, eventId);
   }
 }
