@@ -1,4 +1,9 @@
-import { Injectable, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { SystemRole } from '@prisma/client';
 import { PrismaService } from '../../../../prisma/services/prisma.service';
 import { AttendanceQueryDto } from '../dto/attendance-query.dto';
@@ -129,6 +134,76 @@ export class AttendanceQueryService {
     }
 
     return attendance;
+  }
+
+  /**
+   * Check if user has attended a specific event
+   * UPDATED: This method should NOT throw errors for missing records
+   */
+  async checkUserAttendanceStatus(
+    userId: string,
+    eventId: string,
+  ): Promise<{
+    hasAttended: boolean;
+    attendanceStatus?: string;
+    checkedInAt?: Date;
+    eventStatus: string;
+  }> {
+    try {
+      // Get event details first
+      const event = await this.prisma.event.findUnique({
+        where: { id: eventId, deletedAt: null },
+        select: {
+          id: true,
+          status: true,
+          dateTime: true,
+        },
+      });
+
+      // If event doesn't exist, return early
+      if (!event) {
+        console.log(`Event ${eventId} not found`);
+        return {
+          hasAttended: false,
+          eventStatus: 'NOT_FOUND',
+        };
+      }
+
+      // Check attendance record - this should NOT throw an error if not found
+      const attendance = await this.prisma.eventAttendance.findUnique({
+        where: {
+          userId_eventId: { userId, eventId },
+        },
+        select: {
+          status: true,
+          checkedInAt: true,
+        },
+      });
+
+      // Log for debugging
+      console.log(`Attendance check for user ${userId} on event ${eventId}:`, {
+        attendanceExists: !!attendance,
+        attendanceStatus: attendance?.status || 'NOT_REGISTERED',
+        hasAttended: attendance?.status === 'JOINED',
+        eventStatus: event.status,
+      });
+
+      // Return attendance status (null attendance is perfectly valid)
+      return {
+        hasAttended: attendance?.status === 'JOINED',
+        attendanceStatus: attendance?.status || 'NOT_REGISTERED',
+        checkedInAt: attendance?.checkedInAt || undefined,
+        eventStatus: event.status,
+      };
+    } catch (error) {
+      console.error('Error checking user attendance status:', error);
+      // Don't throw - return safe default values
+      return {
+        hasAttended: false,
+        attendanceStatus: 'ERROR',
+        eventStatus: 'UNKNOWN',
+      };
+    }
   }
 
   /**

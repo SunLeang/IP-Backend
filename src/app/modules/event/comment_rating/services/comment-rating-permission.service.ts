@@ -3,7 +3,12 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { SystemRole, EventStatus, CommentStatus } from '@prisma/client';
+import {
+  SystemRole,
+  EventStatus,
+  CommentStatus,
+  AttendanceStatus,
+} from '@prisma/client';
 import { PrismaService } from '../../../../prisma/services/prisma.service';
 
 @Injectable()
@@ -30,14 +35,35 @@ export class CommentRatingPermissionService {
   }
 
   /**
-   * Check if event is completed (required for comments)
+   * Check if event is completed or has ended (required for comments)
    */
   async validateEventCompleted(eventId: string) {
     const event = await this.validateEventAccess(eventId);
 
-    if (event.status !== EventStatus.COMPLETED) {
+    const now = new Date();
+    const eventDateTime = new Date(event.dateTime);
+    const eventEnded = eventDateTime < now;
+
+    console.log('🔍 Event validation:', {
+      eventId,
+      eventDateTime: eventDateTime.toISOString(),
+      now: now.toISOString(),
+      eventEnded,
+      status: event.status,
+      allowComments: event.status === EventStatus.COMPLETED || eventEnded,
+    });
+
+    // Allow comments if event is explicitly marked as COMPLETED OR if event date has passed
+    if (event.status !== EventStatus.COMPLETED && !eventEnded) {
       throw new ForbiddenException(
-        'Comments and ratings can only be submitted for completed events',
+        'Comments and ratings can only be submitted after the event has ended',
+      );
+    }
+
+    // Also block comments for cancelled events
+    if (event.status === EventStatus.CANCELLED) {
+      throw new ForbiddenException(
+        'Comments and ratings cannot be submitted for cancelled events',
       );
     }
 
@@ -64,6 +90,13 @@ export class CommentRatingPermissionService {
     if (!attendance) {
       throw new ForbiddenException(
         'Only attendees of the event can submit comments and ratings',
+      );
+    }
+
+    // Check if attendance status is confirmed - use enum
+    if (attendance.status !== AttendanceStatus.JOINED) {
+      throw new ForbiddenException(
+        'You must have attended the event to submit comments and ratings',
       );
     }
 

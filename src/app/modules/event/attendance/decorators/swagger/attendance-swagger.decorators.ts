@@ -401,3 +401,54 @@ export const BulkCheckInSwagger = () =>
       },
     }),
   );
+
+export const CheckAttendanceStatusSwagger = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Check if user has attended an event',
+      description:
+        'Check the attendance status of the current user for a specific event. Returns whether they attended and their attendance details.',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Successfully retrieved attendance status',
+      schema: {
+        example: {
+          hasAttended: true,
+          attendanceStatus: 'JOINED',
+          checkedInAt: '2025-01-15T09:30:00Z',
+          eventStatus: 'COMPLETED',
+        },
+      },
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'User has not attended (example response)',
+      schema: {
+        example: {
+          hasAttended: false,
+          attendanceStatus: 'NOT_REGISTERED',
+          eventStatus: 'PUBLISHED',
+        },
+      },
+    }),
+    ApiResponse({
+      status: 401,
+      description: 'Unauthorized - user must be logged in',
+    }),
+    ApiResponse({
+      status: 404,
+      description: 'Event not found',
+      schema: {
+        example: {
+          hasAttended: false,
+          eventStatus: 'NOT_FOUND',
+        },
+      },
+    }),
+    ApiParam({
+      name: 'eventId',
+      description: 'Event ID to check attendance for',
+      example: '123e4567-e89b-12d3-a456-426614174000',
+    }),
+  );

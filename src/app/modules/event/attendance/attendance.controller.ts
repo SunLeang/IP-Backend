@@ -32,6 +32,7 @@ import {
   DeleteAttendanceByCompositeIdSwagger,
   DeleteAttendanceByIdSwagger,
   BulkCheckInSwagger,
+  CheckAttendanceStatusSwagger,
 } from './decorators/swagger';
 
 /**************************************
@@ -204,5 +205,18 @@ export class AttendanceController {
       userId,
       userRole,
     );
+  }
+
+  /**************************************
+   * ATTENDANCE STATUS CHECK
+   **************************************/
+
+  @CheckAttendanceStatusSwagger()
+  @Get('check/:eventId')
+  checkAttendanceStatus(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @GetUser('id') userId: string,
+  ) {
+    return this.attendanceService.checkAttendanceStatus(userId, eventId);
   }
 }

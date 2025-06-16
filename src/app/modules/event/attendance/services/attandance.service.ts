@@ -85,6 +85,13 @@ export class AttendanceService {
     return this.queryService.findOne(id, currentUserId, userRole);
   }
 
+  /**
+   * Check user attendance status for an event
+   */
+  async checkAttendanceStatus(userId: string, eventId: string) {
+    return this.queryService.checkUserAttendanceStatus(userId, eventId);
+  }
+
   /**************************************
    * STATISTICS OPERATIONS (DELEGATED)
    **************************************/
