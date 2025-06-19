@@ -35,9 +35,6 @@ import {
   CheckAttendanceStatusSwagger,
 } from './decorators/swagger';
 
-/**************************************
- * CONTROLLER DEFINITION
- **************************************/
 @AttendanceControllerSwagger()
 @Controller('attendance')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -45,7 +42,7 @@ export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
   /**************************************
-   * REGISTRATION OPERATIONS
+   * ✅ POST ROUTES FIRST
    **************************************/
 
   @RegisterAttendeeSwagger()
@@ -62,9 +59,40 @@ export class AttendanceController {
     );
   }
 
+  @BulkCheckInSwagger()
+  @Post('event/:eventId/bulk-check-in')
+  bulkCheckIn(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Body('userIds') userIds: string[],
+    @GetUser('id') userId: string,
+    @GetUser('systemRole') userRole: SystemRole,
+  ) {
+    console.log(`🎯 ROUTE HIT: bulkCheckIn - Event: ${eventId}`);
+    return this.attendanceService.bulkCheckIn(
+      eventId,
+      userIds,
+      userId,
+      userRole,
+    );
+  }
+
   /**************************************
-   * QUERY OPERATIONS
+   * ✅ MOST SPECIFIC GET ROUTES FIRST
    **************************************/
+
+  // ✅ CRITICAL: This MUST come before any generic routes
+  @CheckAttendanceStatusSwagger()
+  @Get('check/:eventId')
+  @UseGuards(JwtAuthGuard) // Only JWT auth required, no role restrictions
+  checkAttendanceStatus(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @GetUser('id') userId: string,
+  ) {
+    console.log(
+      `🎯 ROUTE HIT: checkAttendanceStatus - User: ${userId}, Event: ${eventId}`,
+    );
+    return this.attendanceService.checkAttendanceStatus(userId, eventId);
+  }
 
   @GetEventAttendeesSwagger()
   @Get('event/:eventId')
@@ -74,6 +102,7 @@ export class AttendanceController {
     @GetUser('id') userId: string,
     @GetUser('systemRole') userRole: SystemRole,
   ) {
+    console.log(`🎯 ROUTE HIT: findAllByEvent - Event: ${eventId}`);
     return this.attendanceService.findAllByEvent(
       eventId,
       query,
@@ -89,12 +118,17 @@ export class AttendanceController {
     @GetUser('id') userId: string,
     @GetUser('systemRole') userRole: SystemRole,
   ) {
+    console.log(`🎯 ROUTE HIT: getEventAttendanceStats - Event: ${eventId}`);
     return this.attendanceService.getEventAttendanceStats(
       eventId,
       userId,
       userRole,
     );
   }
+
+  /**************************************
+   * ✅ COMPOSITE KEY ROUTES (More specific than :id)
+   **************************************/
 
   @GetAttendanceByCompositeIdSwagger()
   @Get(':userId/:eventId')
@@ -104,26 +138,15 @@ export class AttendanceController {
     @GetUser('id') currentUserId: string,
     @GetUser('systemRole') userRole: SystemRole,
   ) {
+    console.log(
+      `🎯 ROUTE HIT: findByCompositeKey - User: ${userId}, Event: ${eventId}`,
+    );
     return this.attendanceService.findOne(
       `${userId}:${eventId}`,
       currentUserId,
       userRole,
     );
   }
-
-  @GetAttendanceByIdSwagger()
-  @Get(':id')
-  findOne(
-    @Param('id', ParseUUIDPipe) id: string,
-    @GetUser('id') userId: string,
-    @GetUser('systemRole') userRole: SystemRole,
-  ) {
-    return this.attendanceService.findOne(id, userId, userRole);
-  }
-
-  /**************************************
-   * UPDATE OPERATIONS
-   **************************************/
 
   @UpdateAttendanceByCompositeIdSwagger()
   @Patch(':userId/:eventId')
@@ -134,6 +157,9 @@ export class AttendanceController {
     @GetUser('id') currentUserId: string,
     @GetUser('systemRole') userRole: SystemRole,
   ) {
+    console.log(
+      `🎯 ROUTE HIT: updateByCompositeKey - User: ${userId}, Event: ${eventId}`,
+    );
     return this.attendanceService.update(
       `${userId}:${eventId}`,
       updateAttendanceDto,
@@ -141,26 +167,6 @@ export class AttendanceController {
       userRole,
     );
   }
-
-  @UpdateAttendanceByIdSwagger()
-  @Patch(':id')
-  update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() updateAttendanceDto: UpdateAttendanceDto,
-    @GetUser('id') userId: string,
-    @GetUser('systemRole') userRole: SystemRole,
-  ) {
-    return this.attendanceService.update(
-      id,
-      updateAttendanceDto,
-      userId,
-      userRole,
-    );
-  }
-
-  /**************************************
-   * DELETE OPERATIONS
-   **************************************/
 
   @DeleteAttendanceByCompositeIdSwagger()
   @Delete(':userId/:eventId')
@@ -170,6 +176,9 @@ export class AttendanceController {
     @GetUser('id') currentUserId: string,
     @GetUser('systemRole') userRole: SystemRole,
   ) {
+    console.log(
+      `🎯 ROUTE HIT: removeByCompositeKey - User: ${userId}, Event: ${eventId}`,
+    );
     return this.attendanceService.remove(
       `${userId}:${eventId}`,
       currentUserId,
@@ -177,46 +186,46 @@ export class AttendanceController {
     );
   }
 
-  @DeleteAttendanceByIdSwagger()
-  @Delete(':id')
-  remove(
-    @Param('id', ParseUUIDPipe) id: string,
-    @GetUser('id') userId: string,
-    @GetUser('systemRole') userRole: SystemRole,
-  ) {
-    return this.attendanceService.remove(id, userId, userRole);
-  }
-
   /**************************************
-   * BULK OPERATIONS
+   * ✅ GENERIC ROUTES LAST (These will catch anything that doesn't match above)
    **************************************/
 
-  @BulkCheckInSwagger()
-  @Post('event/:eventId/bulk-check-in')
-  bulkCheckIn(
-    @Param('eventId', ParseUUIDPipe) eventId: string,
-    @Body('userIds') userIds: string[],
+  @GetAttendanceByIdSwagger()
+  @Get(':id')
+  findOne(
+    @Param('id') id: string,
     @GetUser('id') userId: string,
     @GetUser('systemRole') userRole: SystemRole,
   ) {
-    return this.attendanceService.bulkCheckIn(
-      eventId,
-      userIds,
+    console.log(`🎯 ROUTE HIT: findOne (generic) - ID: ${id}`);
+    return this.attendanceService.findOne(id, userId, userRole);
+  }
+
+  @UpdateAttendanceByIdSwagger()
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() updateAttendanceDto: UpdateAttendanceDto,
+    @GetUser('id') userId: string,
+    @GetUser('systemRole') userRole: SystemRole,
+  ) {
+    console.log(`🎯 ROUTE HIT: update (generic) - ID: ${id}`);
+    return this.attendanceService.update(
+      id,
+      updateAttendanceDto,
       userId,
       userRole,
     );
   }
 
-  /**************************************
-   * ATTENDANCE STATUS CHECK
-   **************************************/
-
-  @CheckAttendanceStatusSwagger()
-  @Get('check/:eventId')
-  checkAttendanceStatus(
-    @Param('eventId', ParseUUIDPipe) eventId: string,
+  @DeleteAttendanceByIdSwagger()
+  @Delete(':id')
+  remove(
+    @Param('id') id: string,
     @GetUser('id') userId: string,
+    @GetUser('systemRole') userRole: SystemRole,
   ) {
-    return this.attendanceService.checkAttendanceStatus(userId, eventId);
+    console.log(`🎯 ROUTE HIT: remove (generic) - ID: ${id}`);
+    return this.attendanceService.remove(id, userId, userRole);
   }
 }

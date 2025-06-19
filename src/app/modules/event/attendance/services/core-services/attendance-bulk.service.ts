@@ -50,7 +50,7 @@ export class AttendanceBulkService {
       );
     }
 
-    // Validate event exists and is active
+    // ✅ FIXED: Validate event exists and get event data
     const event = await this.permissionService.validateEventAccess(eventId);
     if (event.status !== EventStatus.PUBLISHED) {
       throw new BadRequestException(
@@ -91,7 +91,7 @@ export class AttendanceBulkService {
       );
     }
 
-    // Validate event exists
+    // ✅ FIXED: Validate event exists and get event data
     const event = await this.permissionService.validateEventAccess(eventId);
     if (event.status === EventStatus.COMPLETED) {
       throw new BadRequestException(

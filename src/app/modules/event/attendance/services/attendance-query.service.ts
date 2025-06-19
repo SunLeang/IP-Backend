@@ -137,8 +137,8 @@ export class AttendanceQueryService {
   }
 
   /**
-   * Check if user has attended a specific event
-   * UPDATED: This method should NOT throw errors for missing records
+   * ✅ FIXED: Check if user has attended a specific event
+   * This should be accessible to any authenticated user for their own status
    */
   async checkUserAttendanceStatus(
     userId: string,
@@ -150,7 +150,27 @@ export class AttendanceQueryService {
     eventStatus: string;
   }> {
     try {
-      // Get event details first
+      console.log(
+        `🔍 Checking attendance for user ${userId} on event ${eventId}`,
+      );
+
+      // ✅ SIMPLIFIED: Use the new self-check permission method
+      const hasPermission =
+        await this.permissionService.checkSelfAttendancePermission(
+          eventId,
+          userId,
+        );
+
+      if (!hasPermission) {
+        console.log(`❌ Permission denied for self-check`);
+        return {
+          hasAttended: false,
+          attendanceStatus: 'NO_PERMISSION',
+          eventStatus: 'UNKNOWN',
+        };
+      }
+
+      // Get event details
       const event = await this.prisma.event.findUnique({
         where: { id: eventId, deletedAt: null },
         select: {
@@ -160,16 +180,16 @@ export class AttendanceQueryService {
         },
       });
 
-      // If event doesn't exist, return early
       if (!event) {
-        console.log(`Event ${eventId} not found`);
+        console.log(`❌ Event ${eventId} not found`);
         return {
           hasAttended: false,
+          attendanceStatus: 'EVENT_NOT_FOUND',
           eventStatus: 'NOT_FOUND',
         };
       }
 
-      // Check attendance record - this should NOT throw an error if not found
+      // Check attendance record - this should never throw an error
       const attendance = await this.prisma.eventAttendance.findUnique({
         where: {
           userId_eventId: { userId, eventId },
@@ -180,15 +200,16 @@ export class AttendanceQueryService {
         },
       });
 
-      // Log for debugging
-      console.log(`Attendance check for user ${userId} on event ${eventId}:`, {
-        attendanceExists: !!attendance,
+      // Log results
+      console.log(`✅ Attendance check completed:`, {
+        userId,
+        eventId,
+        hasAttendance: !!attendance,
         attendanceStatus: attendance?.status || 'NOT_REGISTERED',
         hasAttended: attendance?.status === 'JOINED',
         eventStatus: event.status,
       });
 
-      // Return attendance status (null attendance is perfectly valid)
       return {
         hasAttended: attendance?.status === 'JOINED',
         attendanceStatus: attendance?.status || 'NOT_REGISTERED',
@@ -196,8 +217,9 @@ export class AttendanceQueryService {
         eventStatus: event.status,
       };
     } catch (error) {
-      console.error('Error checking user attendance status:', error);
-      // Don't throw - return safe default values
+      console.error('❌ Error in checkUserAttendanceStatus:', error);
+
+      // Return safe defaults instead of throwing
       return {
         hasAttended: false,
         attendanceStatus: 'ERROR',
