@@ -34,6 +34,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
           fullName: true,
           systemRole: true,
           currentRole: true,
+          profileImage: true, // ✅ Add this line
           deletedAt: true,
         },
       });
@@ -54,6 +55,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             fullName: true,
             systemRole: true,
             currentRole: true,
+            profileImage: true, // ✅ Add this line
             deletedAt: true,
           },
         });

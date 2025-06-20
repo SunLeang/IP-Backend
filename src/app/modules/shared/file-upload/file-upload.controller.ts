@@ -18,56 +18,47 @@ import { extname, join } from 'path';
 import { randomUUID } from 'crypto';
 import { FileUploadService } from './file-upload.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import {
-  ApiTags,
-  ApiConsumes,
-  ApiBody,
-  ApiBearerAuth,
-  ApiQuery,
-} from '@nestjs/swagger';
 import { GetUser } from 'src/app/core/decorators/get-user.decorator';
 import { CustomFileTypeValidator } from 'src/app/core/validators/custom-file-type.validator';
 
-@ApiTags('file-upload')
+// Import Swagger decorators
+import {
+  FileUploadControllerSwagger,
+  UploadImageToMinioSwagger,
+  DeleteImageFromMinioSwagger,
+  UploadDocumentToMinioSwagger,
+  DeleteDocumentFromMinioSwagger,
+  UploadImageLocalSwagger,
+  UploadDocumentLocalSwagger,
+} from './decorators/swagger';
+
+/**************************************
+ * CONTROLLER DEFINITION
+ **************************************/
+
+@FileUploadControllerSwagger()
 @Controller('file-upload')
 export class FileUploadController {
   constructor(private readonly fileUploadService: FileUploadService) {}
 
-  // NEW MINIO ENDPOINT FOR IMAGES
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        file: {
-          type: 'string',
-          format: 'binary',
-        },
-      },
-    },
-  })
-  @ApiQuery({
-    name: 'folder',
-    required: false,
-    description:
-      'Folder to store the image (e.g., events, profiles, categories)',
-  })
-  @ApiBearerAuth()
+  /**************************************
+   * MINIO IMAGE OPERATIONS
+   **************************************/
+
+  @UploadImageToMinioSwagger()
   @UseGuards(JwtAuthGuard)
   @Post('minio/image')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: memoryStorage(), // ✅ Now correctly imported from multer
-      limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB
-      },
+      storage: memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     }),
   )
   async uploadImageToMinio(
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10MB
+          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }),
           new FileTypeValidator({ fileType: '.(jpg|jpeg|png|gif|webp)' }),
         ],
       }),
@@ -98,7 +89,7 @@ export class FileUploadController {
     };
   }
 
-  @ApiBearerAuth()
+  @DeleteImageFromMinioSwagger()
   @UseGuards(JwtAuthGuard)
   @Delete('minio/image/:filename')
   async deleteImageFromMinio(@Param('filename') filename: string) {
@@ -109,40 +100,18 @@ export class FileUploadController {
     };
   }
 
-  // FIXED DOCUMENT UPLOAD ENDPOINT WITH MEMORY STORAGE
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        file: {
-          type: 'string',
-          format: 'binary',
-        },
-      },
-    },
-  })
-  @ApiQuery({
-    name: 'folder',
-    required: false,
-    description: 'Folder to store the document (e.g., cvs, certificates)',
-  })
-  @ApiBearerAuth()
+  /**************************************
+   * MINIO DOCUMENT OPERATIONS
+   **************************************/
+
+  @UploadDocumentToMinioSwagger()
   @UseGuards(JwtAuthGuard)
   @Post('minio/document')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: memoryStorage(), // ✅ Now correctly imported from multer
-      limits: {
-        fileSize: 20 * 1024 * 1024, // 20MB
-      },
+      storage: memoryStorage(),
+      limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
       fileFilter: (req, file, cb) => {
-        // Optional: Additional server-side validation
-        console.log('🔍 Server-side file filter:', {
-          originalname: file.originalname,
-          mimetype: file.mimetype,
-        });
-
         const allowedTypes = [
           'application/pdf',
           'application/msword',
@@ -152,7 +121,6 @@ export class FileUploadController {
         if (!allowedTypes.includes(file.mimetype)) {
           return cb(new BadRequestException('Invalid file type'), false);
         }
-
         cb(null, true);
       },
     }),
@@ -161,7 +129,7 @@ export class FileUploadController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 20 * 1024 * 1024 }), // 20MB
+          new MaxFileSizeValidator({ maxSize: 20 * 1024 * 1024 }),
           new CustomFileTypeValidator(
             ['.pdf', '.doc', '.docx'],
             [
@@ -177,38 +145,17 @@ export class FileUploadController {
     @Query('folder') folder?: string,
     @GetUser('id') userId?: string,
   ) {
-    console.log('📤 Document upload controller received:', {
-      fileName: file?.originalname,
-      fileSize: file?.size,
-      mimeType: file?.mimetype,
-      hasBuffer: !!file?.buffer,
-      bufferLength: file?.buffer ? file.buffer.length : 'undefined',
-      bufferType: file?.buffer ? typeof file.buffer : 'undefined',
-      folder: folder,
-      userId: userId,
-    });
-
-    if (!file) {
-      console.error('❌ No file uploaded');
-      throw new BadRequestException('No file uploaded');
-    }
-
-    if (!file.buffer) {
-      console.error('❌ File buffer is missing');
-      throw new BadRequestException(
-        'File buffer is missing - please try uploading again',
-      );
+    if (!file || !file.buffer) {
+      throw new BadRequestException('No file uploaded or file buffer missing');
     }
 
     const uploadFolder = folder || 'cvs';
-    console.log(`📁 Uploading to folder: ${uploadFolder}`);
 
     try {
       const result = await this.fileUploadService.uploadDocument(
         file,
         uploadFolder,
       );
-      console.log('✅ Upload successful:', result);
 
       return {
         success: true,
@@ -224,12 +171,11 @@ export class FileUploadController {
         },
       };
     } catch (error) {
-      console.error('❌ Upload failed:', error);
       throw new BadRequestException(error.message || 'Upload failed');
     }
   }
 
-  @ApiBearerAuth()
+  @DeleteDocumentFromMinioSwagger()
   @UseGuards(JwtAuthGuard)
   @Delete('minio/document/:filename')
   async deleteDocumentFromMinio(@Param('filename') filename: string) {
@@ -240,20 +186,11 @@ export class FileUploadController {
     };
   }
 
-  // EXISTING LOCAL FILE ENDPOINTS (keep for backward compatibility)
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        file: {
-          type: 'string',
-          format: 'binary',
-        },
-      },
-    },
-  })
-  @ApiBearerAuth()
+  /**************************************
+   * LOCAL FILE OPERATIONS (LEGACY)
+   **************************************/
+
+  @UploadImageLocalSwagger()
   @UseGuards(JwtAuthGuard)
   @Post('image')
   @UseInterceptors(
@@ -277,9 +214,7 @@ export class FileUploadController {
         }
         cb(null, true);
       },
-      limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
-      },
+      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
     }),
   )
   uploadImage(
@@ -300,19 +235,7 @@ export class FileUploadController {
     };
   }
 
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        file: {
-          type: 'string',
-          format: 'binary',
-        },
-      },
-    },
-  })
-  @ApiBearerAuth()
+  @UploadDocumentLocalSwagger()
   @UseGuards(JwtAuthGuard)
   @Post('document')
   @UseInterceptors(
@@ -341,9 +264,7 @@ export class FileUploadController {
         }
         cb(null, true);
       },
-      limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB
-      },
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     }),
   )
   uploadDocument(
