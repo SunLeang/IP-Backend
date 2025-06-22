@@ -230,4 +230,63 @@ export class UserService {
       },
     });
   }
+
+  /**
+   * Get all normal users (attendees/volunteers)
+   */
+  async getAllAttendees() {
+    return this.prisma.user.findMany({
+      where: {
+        systemRole: SystemRole.USER,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        fullName: true,
+        gender: true,
+        age: true,
+        org: true,
+        currentRole: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+  /**
+   * Get all organizers (admins)
+   */
+  async getAllOrganizers() {
+    return this.prisma.user.findMany({
+      where: {
+        systemRole: SystemRole.ADMIN,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        fullName: true,
+        gender: true,
+        age: true,
+        org: true,
+        currentRole: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            organizedEvents: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
 }

@@ -718,3 +718,143 @@ export const InternalServerErrorResponse = () =>
       },
     }),
   );
+
+/**************************************
+ * GET ATTENDEES ENDPOINT DECORATORS
+ **************************************/
+export const GetAllAttendeesSwagger = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Get all attendees/volunteers',
+      description:
+        'Retrieve a list of all normal users (attendees and volunteers) - Admin/Super Admin only',
+    }),
+    ApiBearerAuth(),
+    ApiResponse({
+      status: 200,
+      description: 'Attendees/volunteers retrieved successfully',
+      schema: {
+        example: [
+          {
+            id: 'clxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+            email: 'john.doe@example.com',
+            username: 'johndoe',
+            fullName: 'John Doe',
+            gender: 'Male',
+            age: 25,
+            org: 'ABC University',
+            currentRole: 'ATTENDEE',
+            createdAt: '2024-01-01T00:00:00.000Z',
+            updatedAt: '2024-01-01T00:00:00.000Z',
+          },
+          {
+            id: 'clxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx2',
+            email: 'jane.smith@example.com',
+            username: 'janesmith',
+            fullName: 'Jane Smith',
+            gender: 'Female',
+            age: 28,
+            org: 'XYZ Corp',
+            currentRole: 'VOLUNTEER',
+            createdAt: '2024-01-02T00:00:00.000Z',
+            updatedAt: '2024-01-02T00:00:00.000Z',
+          },
+        ],
+      },
+    }),
+    ApiResponse({
+      status: 401,
+      description: 'Unauthorized',
+      schema: {
+        example: {
+          statusCode: 401,
+          message: 'Unauthorized',
+          error: 'Unauthorized',
+        },
+      },
+    }),
+    ApiResponse({
+      status: 403,
+      description: 'Forbidden - Admin/Super Admin access required',
+      schema: {
+        example: {
+          statusCode: 403,
+          message: 'Forbidden resource',
+          error: 'Forbidden',
+        },
+      },
+    }),
+  );
+
+/**************************************
+ * GET ORGANIZERS ENDPOINT DECORATORS
+ **************************************/
+export const GetAllOrganizersSwagger = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Get all organizers',
+      description:
+        'Retrieve a list of all organizers (admin users) with their event counts - Admin/Super Admin only',
+    }),
+    ApiBearerAuth(),
+    ApiResponse({
+      status: 200,
+      description: 'Organizers retrieved successfully',
+      schema: {
+        example: [
+          {
+            id: 'clxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+            email: 'organizer1@eventura.com',
+            username: 'organizer1',
+            fullName: 'Organizer One',
+            gender: 'Male',
+            age: 35,
+            org: 'Event Management Inc',
+            currentRole: 'ATTENDEE',
+            createdAt: '2024-01-01T00:00:00.000Z',
+            updatedAt: '2024-01-01T00:00:00.000Z',
+            _count: {
+              organizedEvents: 15,
+            },
+          },
+          {
+            id: 'clxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx2',
+            email: 'organizer2@eventura.com',
+            username: 'organizer2',
+            fullName: 'Organizer Two',
+            gender: 'Female',
+            age: 42,
+            org: 'Conference Solutions Ltd',
+            currentRole: 'ATTENDEE',
+            createdAt: '2024-01-02T00:00:00.000Z',
+            updatedAt: '2024-01-02T00:00:00.000Z',
+            _count: {
+              organizedEvents: 8,
+            },
+          },
+        ],
+      },
+    }),
+    ApiResponse({
+      status: 401,
+      description: 'Unauthorized',
+      schema: {
+        example: {
+          statusCode: 401,
+          message: 'Unauthorized',
+          error: 'Unauthorized',
+        },
+      },
+    }),
+    ApiResponse({
+      status: 403,
+      description: 'Forbidden - Admin/Super Admin access required',
+      schema: {
+        example: {
+          statusCode: 403,
+          message: 'Forbidden resource',
+          error: 'Forbidden',
+        },
+      },
+    }),
+  );
