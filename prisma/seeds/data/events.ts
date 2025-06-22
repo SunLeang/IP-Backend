@@ -19,56 +19,91 @@ export async function seedEvents(
   const uploader = new MinioSeedUploader();
 
   const eventsData = [
+    // ORGANIZER 1 EVENTS (2 events)
     {
-      name: 'Charity Run 2025',
-      description: 'Annual charity run to raise funds for local hospitals',
-      categoryKey: 'charity',
-      location: 'City Park',
+      name: 'Kizuna 2025',
+      description: 'មហោស្រពគីហ្សូណាជប៉ុន-កម្ពុជាឆ្នាំ២០២៥',
+      categoryKey: 'traditional',
+      organizerKey: 'organizer1',
+      location: 'CJCC',
       dateTime: new Date('2025-06-15T09:00:00Z'),
-      key: 'charityRun',
+      key: 'kizunaRun',
       images: {
-        profile: 'charity-run.jpg', // ✅ Use existing file name
-        cover: 'charity-run.jpg', // ✅ Use existing file name
-        location: 'charity-run.jpg', // ✅ Use existing file name
+        profile: 'Kizuna.jpg',
+        cover: 'kizuna_cover.jpg',
+        location: 'kizuna_location.png',
       },
     },
     {
-      name: 'Tech Workshop',
-      description: 'Learn new programming skills',
-      categoryKey: 'education',
-      location: 'Community Center',
-      dateTime: new Date('2025-05-22T13:00:00Z'),
-      key: 'techWorkshop',
-      images: {
-        profile: 'tech-workshop.jpg', // ✅ Use existing file name
-        cover: 'tech-workshop.jpg', // ✅ Use existing file name
-        location: 'tech-workshop.jpg', // ✅ Use existing file name
-      },
-    },
-    {
-      name: 'Environmental Cleanup',
-      description: 'Join us in cleaning the local beach',
+      name: 'Tanabata Festival 2025',
+      description: 'ពិធីបុណ្យផ្កាយឆ្នាំ ២០២៤',
       categoryKey: 'environment',
-      location: 'Sunset Beach',
-      dateTime: new Date('2025-07-03T08:00:00Z'),
-      key: 'environmentalCleanup',
+      organizerKey: 'organizer1',
+      location: 'CJCC',
+      dateTime: new Date('2025-07-13T13:00:00Z'),
+      key: 'tanabataFestival',
       images: {
-        profile: 'environmental-cleanup.png', // ✅ Use existing file name
-        cover: 'environmental-cleanup.png', // ✅ Use existing file name
-        location: 'environmental-cleanup.png', // ✅ Use existing file name
+        profile: 'Tanabata.jpg',
+        cover: 'Tanabata_cover.jpg',
+        location: 'Tanabat_location.jpg',
+      },
+    },
+    // ORGANIZER 2 EVENTS (4 events)
+    {
+      name: 'Cambodian Traditional Dance Show',
+      description:
+        'The abduction of Sita 👑 An extract from the Cambodian Ramayana...',
+      categoryKey: 'traditional',
+      organizerKey: 'organizer2',
+      location: 'Koh Pich',
+      dateTime: new Date('2025-07-03T08:00:00Z'),
+      key: 'danceShow',
+      images: {
+        profile: 'sarovan.jpg',
+        cover: 'sarovan.jpg',
+        location: 'sarovan_location.png',
       },
     },
     {
-      name: 'Upcoming Hackathon',
-      description: 'A 48-hour coding competition',
-      categoryKey: 'technology',
-      location: 'Tech Hub',
+      name: 'Scientific Days 2025',
+      description: 'A scientific event to promote STEM education',
+      categoryKey: 'education',
+      organizerKey: 'organizer2',
+      location: 'ITC',
       dateTime: new Date('2025-08-15T10:00:00Z'),
-      key: 'hackathon',
+      key: 'scienceDays',
       images: {
-        profile: 'hackathon.png', // ✅ Use existing file name
-        cover: 'hackathon.png', // ✅ Use existing file name
-        location: 'hackathon.png', // ✅ Use existing file name
+        profile: 'science.jpg',
+        cover: 'science_cover.jpg',
+        location: 'science_location.png',
+      },
+    },
+    {
+      name: 'Melody of Love - Tena Concert',
+      description: 'Tena Concert 2025',
+      categoryKey: 'entertainment',
+      organizerKey: 'organizer2',
+      location: 'Aeon SenSok',
+      dateTime: new Date('2025-07-20T13:00:00Z'),
+      key: 'tenaConcert',
+      images: {
+        profile: 'melody.jpg',
+        cover: 'melody_cover.jpg',
+        location: 'melody_location.png',
+      },
+    },
+    {
+      name: 'Solidarity March',
+      description: 'Solidarity March for Peace and Unity of Cambodia',
+      categoryKey: 'environment',
+      organizerKey: 'organizer2',
+      location: 'Monument of Independence',
+      dateTime: new Date('2025-06-30T13:00:00Z'),
+      key: 'peaceMarch',
+      images: {
+        profile: 'march.jpg',
+        cover: 'march_cover.jpg',
+        location: 'march_location.png',
       },
     },
   ];
@@ -77,6 +112,9 @@ export async function seedEvents(
 
   for (const eventData of eventsData) {
     try {
+      // Get the correct organizer
+      const organizerId = users[eventData.organizerKey].id;
+
       // Get the fallback images path
       const fallbackImagePath = join(__dirname, '../assets/images/events');
 
@@ -115,11 +153,11 @@ export async function seedEvents(
         );
       }
 
-      // Create event with MinIO image URLs or defaults
+      // Create event with the assigned organizer
       const event = await createEvent(prisma, {
         name: eventData.name,
         description: eventData.description,
-        organizerId: users.organizer.id,
+        organizerId: organizerId, // ✅ Use correct organizer
         categoryId: categories[eventData.categoryKey].id,
         location: eventData.location,
         dateTime: eventData.dateTime,
@@ -127,48 +165,27 @@ export async function seedEvents(
         acceptingVolunteers: true,
         profileImage: profileResult?.thumbnailUrl || 'default-event.jpg',
         coverImage: coverResult?.originalUrl || 'default-event.jpg',
-        locationImage: locationResult?.thumbnailUrl || 'default-event.jpg',
+        locationImage: locationResult?.originalUrl || 'default-event.jpg',
       });
 
-      // Use the predefined key instead of generating one
       events[eventData.key] = event;
-
-      console.log(`✅ Event "${eventData.name}" created with MinIO images`);
+      console.log(
+        `✅ Event "${eventData.name}" created by ${eventData.organizerKey}`,
+      );
     } catch (error) {
       console.error(
         `❌ Error creating event "${eventData.name}":`,
         error.message,
       );
-
-      // Fallback: create event with default images
-      try {
-        const event = await createEvent(prisma, {
-          name: eventData.name,
-          description: eventData.description,
-          organizerId: users.organizer.id,
-          categoryId: categories[eventData.categoryKey].id,
-          location: eventData.location,
-          dateTime: eventData.dateTime,
-          status: EventStatus.PUBLISHED,
-          acceptingVolunteers: true,
-          profileImage: 'default-event.jpg',
-          coverImage: 'default-event.jpg',
-          locationImage: 'default-event.jpg',
-        });
-
-        events[eventData.key] = event;
-        console.log(`✅ Event "${eventData.name}" created with default images`);
-      } catch (fallbackError) {
-        console.error(
-          `❌ Failed to create event "${eventData.name}" even with defaults:`,
-          fallbackError.message,
-        );
-      }
     }
   }
 
   console.log('Events seeded successfully');
-  console.log('✅ Available events:', Object.keys(events));
+  console.log('📊 Event distribution:');
+  console.log('  - Organizer 1: Kizuna 2025, Tanabata Festival');
+  console.log(
+    '  - Organizer 2: Dance Show, Science Days, Tena Concert, Solidarity March',
+  );
   return events;
 }
 

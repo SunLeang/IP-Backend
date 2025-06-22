@@ -13,76 +13,67 @@ export async function seedNotifications(
   await createNotification(prisma, {
     userId: users.regularUser1.id,
     type: NotificationType.ANNOUNCEMENT,
-    message: 'New announcement for Charity Run: Important Update',
-    eventId: events.charityRun.id,
-    announcementId: announcements.charityRunUpdate.id,
+    message: 'New announcement for Kizuna 2025: Important Update',
+    eventId: events.kizunaRun.id,
+    announcementId: announcements.kizunaUpdate.id,
   });
 
   await createNotification(prisma, {
     userId: users.regularUser2.id,
     type: NotificationType.ANNOUNCEMENT,
-    message: 'New announcement for Charity Run: Important Update',
-    eventId: events.charityRun.id,
-    announcementId: announcements.charityRunUpdate.id,
-    read: true,
-  });
-
-  await createNotification(prisma, {
-    userId: users.regularUser1.id,
-    type: NotificationType.ANNOUNCEMENT,
-    message: 'New announcement for Tech Workshop: New Speaker Added',
-    eventId: events.techWorkshop.id,
-    announcementId: announcements.newSpeaker.id,
-  });
-
-  // Application notifications
-  await createNotification(prisma, {
-    userId: users.organizer.id,
-    type: NotificationType.APPLICATION_UPDATE,
-    message: `New volunteer application from ${users.regularUser1.fullName}`,
-    eventId: events.charityRun.id,
-    applicationId: applications.pendingApplication.id,
-  });
-
-  await createNotification(prisma, {
-    userId: users.regularUser2.id,
-    type: NotificationType.APPLICATION_UPDATE,
-    message: 'Your volunteer application for Tech Workshop has been approved!',
-    eventId: events.techWorkshop.id,
-    applicationId: applications.approvedTechWorkshop.id,
+    message: 'New announcement for Kizuna 2025: Costume Guidelines',
+    eventId: events.kizunaRun.id,
+    announcementId: announcements.kizunaCostume.id,
     read: true,
   });
 
   await createNotification(prisma, {
     userId: users.regularUser3.id,
+    type: NotificationType.ANNOUNCEMENT,
+    message: 'New announcement for Tanabata Festival: Weather Update',
+    eventId: events.tanabataFestival.id,
+    announcementId: announcements.tanabataWeather.id,
+  });
+
+  // Application notifications
+  await createNotification(prisma, {
+    userId: users.organizer1.id,
     type: NotificationType.APPLICATION_UPDATE,
-    message:
-      'Your volunteer application for Environmental Cleanup was not approved at this time.',
-    eventId: events.environmentalCleanup.id,
-    applicationId: applications.rejectedApplication.id,
+    message: `New volunteer application from ${users.regularUser2.fullName}`,
+    eventId: events.kizunaRun.id,
+    applicationId: applications.kizunaVolunteer.id,
+  });
+
+  await createNotification(prisma, {
+    userId: users.regularUser2.id,
+    type: NotificationType.APPLICATION_UPDATE,
+    message: 'Your volunteer application for Kizuna 2025 has been approved!',
+    eventId: events.kizunaRun.id,
+    applicationId: applications.kizunaVolunteer.id,
+    read: true,
   });
 
   // Event reminder notifications
   await createNotification(prisma, {
     userId: users.regularUser1.id,
     type: NotificationType.EVENT_REMINDER,
-    message: 'Reminder: Charity Run is tomorrow!',
-    eventId: events.charityRun.id,
+    message: 'Reminder: Kizuna 2025 is tomorrow!',
+    eventId: events.kizunaRun.id,
   });
 
   await createNotification(prisma, {
-    userId: users.regularUser2.id,
+    userId: users.regularUser3.id,
     type: NotificationType.EVENT_REMINDER,
-    message: 'Reminder: Tech Workshop starts in 2 days.',
-    eventId: events.techWorkshop.id,
+    message: 'Reminder: Tanabata Festival starts in 2 days.',
+    eventId: events.tanabataFestival.id,
   });
 
   // Task assignment notifications
   await createNotification(prisma, {
     userId: users.regularUser2.id,
     type: NotificationType.TASK_ASSIGNMENT,
-    message: 'You have been assigned to the "Equipment Setup" task.',
-    eventId: events.techWorkshop.id,
+    message: 'You have been assigned to the "Cultural Setup" task.',
+    eventId: events.kizunaRun.id,
   });
 
   // System alert

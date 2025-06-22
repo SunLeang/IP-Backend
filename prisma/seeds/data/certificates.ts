@@ -7,32 +7,33 @@ export async function seedCertificates(
 ) {
   console.log('Seeding certificates...');
 
+  // ✅ Only use fields that exist in your Certificate model
   await createCertificate(prisma, {
     userId: users.regularUser1.id,
-    eventId: events.charityRun.id,
-    filePath: 'certificates/charity_run_completion_user1.pdf',
-    issuedAt: new Date(new Date().setDate(new Date().getDate() - 10)),
+    eventId: events.kizunaRun.id, // ✅ Updated to use correct event
+    filePath: 'certificates/kizuna_completion_user1.pdf',
+    issuedAt: new Date('2025-06-16T10:00:00Z'),
   });
 
   await createCertificate(prisma, {
     userId: users.regularUser2.id,
-    eventId: events.charityRun.id,
-    filePath: 'certificates/charity_run_completion_user2.pdf',
-    issuedAt: new Date(new Date().setDate(new Date().getDate() - 10)),
+    eventId: events.kizunaRun.id, // ✅ Updated to use correct event
+    filePath: 'certificates/kizuna_volunteer_user2.pdf',
+    issuedAt: new Date('2025-06-16T10:00:00Z'),
   });
 
   await createCertificate(prisma, {
-    userId: users.regularUser2.id,
-    eventId: events.techWorkshop.id,
-    filePath: 'certificates/tech_workshop_volunteer_user2.pdf',
-    issuedAt: new Date(new Date().setDate(new Date().getDate() - 5)),
+    userId: users.regularUser3.id,
+    eventId: events.tanabataFestival.id, // ✅ Updated to use correct event
+    filePath: 'certificates/tanabata_volunteer_user3.pdf',
+    issuedAt: new Date('2025-07-14T10:00:00Z'),
   });
 
   await createCertificate(prisma, {
-    userId: users.regularUser1.id,
-    eventId: events.techWorkshop.id,
-    filePath: 'certificates/tech_workshop_completion_user1.pdf',
-    issuedAt: new Date(new Date().setDate(new Date().getDate() - 5)),
+    userId: users.regularUser4.id,
+    eventId: events.danceShow.id, // ✅ Updated to use correct event
+    filePath: 'certificates/dance_volunteer_user4.pdf',
+    issuedAt: new Date('2025-07-04T10:00:00Z'),
   });
 
   console.log('Certificates seeded successfully');
@@ -45,7 +46,7 @@ async function createCertificate(prisma: PrismaClient, data: any) {
       event: { connect: { id: data.eventId } },
       filePath: data.filePath,
       issuedAt: data.issuedAt || new Date(),
-      templateImage: 'songkran.png', // Add if your model has this
+      // ❌ Removed templateImage if it doesn't exist in your schema
     },
   });
 }

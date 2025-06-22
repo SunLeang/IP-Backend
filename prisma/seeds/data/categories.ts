@@ -16,9 +16,9 @@ export async function seedCategories(prisma: PrismaClient) {
   await uploader.ensureBucketsExist();
 
   const categoriesData = [
-    { name: 'Charity', imageName: 'charity.jpg', key: 'charity' },
-    { name: 'Education', imageName: 'education.png', key: 'education' },
-    { name: 'Technology', imageName: 'technology.jpg', key: 'technology' },
+    { name: 'Entertainment', imageName: 'entertainment.jpg', key: 'entertainment' },
+    { name: 'Education', imageName: 'education.jpg', key: 'education' },
+    { name: 'Traditional', imageName: 'traditional.jpg', key: 'traditional' },
     { name: 'Environment', imageName: 'environment.jpg', key: 'environment' },
   ];
 
