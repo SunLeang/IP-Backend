@@ -43,11 +43,11 @@ export class AttendanceRegistrationService {
       );
     }
 
-    // Validate event and user exist
+    // ✅ FIXED: Validate event and user exist - get event data
     const event = await this.permissionService.validateEventAccess(eventId);
     await this.permissionService.validateUserExists(userId);
 
-    // Check if event is not completed
+    // ✅ FIXED: Use the returned event data
     if (event.status === EventStatus.COMPLETED) {
       throw new BadRequestException(
         'Cannot register attendees for a completed event',

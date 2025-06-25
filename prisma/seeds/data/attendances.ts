@@ -7,61 +7,112 @@ export async function seedAttendances(
 ) {
   console.log('Seeding event attendances...');
 
-  // Charity Run attendances
+  // 🎯 KIZUNA 2025 (Organizer 1) - Mixed participation
   await createAttendance(prisma, {
-    userId: users.regularUser1.id,
-    eventId: events.charityRun.id,
+    userId: users.regularUser1.id, // Sun Leang
+    eventId: events.kizunaRun.id,
     status: AttendanceStatus.JOINED,
-    notes: 'Registered early',
-    checkedInAt: new Date(new Date().setDate(new Date().getDate() - 5)),
+    notes: 'Loved the cultural experience',
+    checkedInAt: new Date('2025-06-15T08:30:00Z'),
   });
 
   await createAttendance(prisma, {
-    userId: users.regularUser2.id,
-    eventId: events.charityRun.id,
+    userId: users.regularUser2.id, // Daro
+    eventId: events.kizunaRun.id,
     status: AttendanceStatus.JOINED,
+    checkedInAt: new Date('2025-06-15T08:45:00Z'),
   });
 
   await createAttendance(prisma, {
-    userId: users.regularUser3.id,
-    eventId: events.charityRun.id,
+    userId: users.regularUser4.id, // Meng Hour
+    eventId: events.kizunaRun.id,
     status: AttendanceStatus.NO_SHOW,
-    notes: "Didn't show up",
+    notes: "Couldn't make it due to work",
   });
 
-  // Tech Workshop attendances
+  // 🎯 TANABATA FESTIVAL (Organizer 1) - Good turnout
   await createAttendance(prisma, {
-    userId: users.regularUser1.id,
-    eventId: events.techWorkshop.id,
+    userId: users.regularUser3.id, // Seang
+    eventId: events.tanabataFestival.id,
     status: AttendanceStatus.JOINED,
-    checkedInAt: new Date(new Date().setDate(new Date().getDate() - 2)),
+    checkedInAt: new Date('2025-07-13T12:30:00Z'),
   });
 
   await createAttendance(prisma, {
-    userId: users.regularUser3.id,
-    eventId: events.techWorkshop.id,
+    userId: users.regularUser5.id, // Ratanak
+    eventId: events.tanabataFestival.id,
+    status: AttendanceStatus.JOINED,
+    notes: 'Beautiful star festival celebration',
+    checkedInAt: new Date('2025-07-13T12:45:00Z'),
+  });
+
+  // 🎯 DANCE SHOW (Organizer 2) - Cultural enthusiasts
+  await createAttendance(prisma, {
+    userId: users.regularUser1.id, // Sun Leang
+    eventId: events.danceShow.id,
+    status: AttendanceStatus.JOINED,
+    notes: 'Amazing traditional performance',
+    checkedInAt: new Date('2025-07-03T07:45:00Z'),
+  });
+
+  await createAttendance(prisma, {
+    userId: users.regularUser6.id, // Wathrak
+    eventId: events.danceShow.id,
     status: AttendanceStatus.LEFT_EARLY,
-    notes: 'Had to leave for emergency',
-    checkedInAt: new Date(new Date().setDate(new Date().getDate() - 2)),
+    notes: 'Had to leave for family emergency',
+    checkedInAt: new Date('2025-07-03T08:00:00Z'),
   });
 
-  // Environmental Cleanup attendances
+  // 🎯 SCIENCE DAYS (Organizer 2) - STEM students
   await createAttendance(prisma, {
-    userId: users.regularUser2.id,
-    eventId: events.environmentalCleanup.id,
+    userId: users.regularUser2.id, // Daro
+    eventId: events.scienceDays.id,
     status: AttendanceStatus.JOINED,
+    notes: 'Great STEM learning experience',
+    checkedInAt: new Date('2025-08-15T09:30:00Z'),
   });
 
   await createAttendance(prisma, {
-    userId: users.organizer.id,
-    eventId: events.environmentalCleanup.id,
+    userId: users.regularUser3.id, // Seang
+    eventId: events.scienceDays.id,
     status: AttendanceStatus.JOINED,
-    registeredBy: users.admin.id,
-    notes: 'VIP guest',
-    checkedInAt: new Date(new Date().setDate(new Date().getDate() - 1)),
+    checkedInAt: new Date('2025-08-15T09:45:00Z'),
+  });
+
+  // 🎯 TENA CONCERT (Organizer 2) - Music lovers
+  await createAttendance(prisma, {
+    userId: users.regularUser4.id, // Meng Hour
+    eventId: events.tenaConcert.id,
+    status: AttendanceStatus.JOINED,
+    notes: 'Fantastic concert!',
+    checkedInAt: new Date('2025-07-20T12:30:00Z'),
+  });
+
+  await createAttendance(prisma, {
+    userId: users.regularUser5.id, // Ratanak
+    eventId: events.tenaConcert.id,
+    status: AttendanceStatus.JOINED,
+    checkedInAt: new Date('2025-07-20T12:45:00Z'),
+  });
+
+  // 🎯 SOLIDARITY MARCH (Organizer 2) - Community activists
+  await createAttendance(prisma, {
+    userId: users.regularUser1.id, // Sun Leang
+    eventId: events.peaceMarch.id,
+    status: AttendanceStatus.JOINED,
+    notes: 'Proud to support unity',
+    checkedInAt: new Date('2025-06-30T12:30:00Z'),
+  });
+
+  await createAttendance(prisma, {
+    userId: users.regularUser6.id, // Wathrak
+    eventId: events.peaceMarch.id,
+    status: AttendanceStatus.JOINED,
+    checkedInAt: new Date('2025-06-30T12:45:00Z'),
   });
 
   console.log('Event attendances seeded successfully');
+  console.log('📊 Attendance distribution across all 6 events completed');
 }
 
 async function createAttendance(prisma: PrismaClient, data: any) {

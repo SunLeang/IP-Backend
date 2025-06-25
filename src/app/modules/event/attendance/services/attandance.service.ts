@@ -86,9 +86,15 @@ export class AttendanceService {
   }
 
   /**
-   * Check user attendance status for an event
+   * ✅ FIXED: Check user attendance status - no permission restrictions for self-checks
    */
   async checkAttendanceStatus(userId: string, eventId: string) {
+    console.log(
+      `📋 Service: Checking attendance for user ${userId} on event ${eventId}`,
+    );
+
+    // ✅ IMPORTANT: This is always a self-check, so no additional permission validation needed
+    // The query service will handle event existence validation
     return this.queryService.checkUserAttendanceStatus(userId, eventId);
   }
 

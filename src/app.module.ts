@@ -15,6 +15,7 @@ import { AttendanceModule } from './app/modules/event/attendance/attendance.modu
 import { NotificationModule } from './app/modules/notification/notification.module';
 import { TaskModule } from './app/modules/event/task/task.module';
 import { LoggerMiddleware } from './app/core/middleware/logger.middleware';
+import { FileUploadModule } from './app/modules/shared/file-upload/file-upload.module';
 
 @Module({
   imports: [
@@ -31,21 +32,19 @@ import { LoggerMiddleware } from './app/core/middleware/logger.middleware';
     AttendanceModule,
     NotificationModule,
     TaskModule,
+    FileUploadModule,
   ],
   providers: [
-    // Register JwtAuthGuard as a global guard
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
     },
-    // Register RolesGuard as a global guard
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
     },
   ],
-  controllers: [
-  ],
+  controllers: [],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

@@ -32,6 +32,8 @@ import { UserIntegrationService } from './services/user-integration.service';
 import {
   UserControllerSwagger,
   FindAllUsersSwagger,
+  GetAllAttendeesSwagger,
+  GetAllOrganizersSwagger,
   FindOneUserSwagger,
   UpdateUserSwagger,
   RemoveUserSwagger,
@@ -66,6 +68,20 @@ export class UserController {
   @Roles(SystemRole.SUPER_ADMIN)
   findAll() {
     return this.userService.findAll();
+  }
+
+  @GetAllAttendeesSwagger()
+  @Get('attendees')
+  @Roles(SystemRole.ADMIN, SystemRole.SUPER_ADMIN)
+  getAllAttendees() {
+    return this.userService.getAllAttendees();
+  }
+
+  @GetAllOrganizersSwagger()
+  @Get('organizers')
+  @Roles(SystemRole.ADMIN, SystemRole.SUPER_ADMIN)
+  getAllOrganizers() {
+    return this.userService.getAllOrganizers();
   }
 
   @FindOneUserSwagger()
