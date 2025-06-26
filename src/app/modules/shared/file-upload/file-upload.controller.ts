@@ -11,15 +11,20 @@ import {
   Query,
   Delete,
   Param,
+  Get,
+  Res,
+  NotFoundException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage, memoryStorage } from 'multer';
 import { extname, join } from 'path';
 import { randomUUID } from 'crypto';
+import { Response } from 'express';
 import { FileUploadService } from './file-upload.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { GetUser } from 'src/app/core/decorators/get-user.decorator';
 import { CustomFileTypeValidator } from 'src/app/core/validators/custom-file-type.validator';
+import { MinioService } from '../minio/minio.service';
 
 // Import Swagger decorators
 import {
@@ -39,7 +44,10 @@ import {
 @FileUploadControllerSwagger()
 @Controller('file-upload')
 export class FileUploadController {
-  constructor(private readonly fileUploadService: FileUploadService) {}
+  constructor(
+    private readonly fileUploadService: FileUploadService,
+    private readonly minioService: MinioService,
+  ) {}
 
   /**************************************
    * MINIO IMAGE OPERATIONS
@@ -150,7 +158,6 @@ export class FileUploadController {
     }
 
     const uploadFolder = folder || 'cvs';
-
     try {
       const result = await this.fileUploadService.uploadDocument(
         file,
@@ -184,6 +191,65 @@ export class FileUploadController {
       success: true,
       message: 'Document deleted successfully from MinIO',
     };
+  }
+
+  /**************************************
+   * DOCUMENT PROXY ENDPOINT
+   **************************************/
+
+  @UseGuards(JwtAuthGuard)
+  @Get('minio/document/view/:filename')
+  async viewDocumentProxy(
+    @Param('filename') filename: string,
+    @Res() res: Response,
+  ) {
+    try {
+      console.log('📄 Document proxy request for:', filename);
+
+      // Decode the filename
+      const decodedFilename = decodeURIComponent(filename);
+      console.log('📄 Decoded filename:', decodedFilename);
+
+      // Ensure the path includes cvs/ folder if not present
+      let finalPath = decodedFilename;
+
+      if (!finalPath.startsWith('cvs/') && !finalPath.includes('/')) {
+        finalPath = `cvs/${finalPath}`;
+        console.log('📄 Added cvs/ prefix:', finalPath);
+      } else if (finalPath.startsWith('cv/') && !finalPath.startsWith('cvs/')) {
+        finalPath = finalPath.replace('cv/', 'cvs/');
+        console.log('📄 Converted cv/ to cvs/:', finalPath);
+      }
+
+      // Get MinIO client
+      const minioClient = this.minioService.getClient();
+
+      // Try to get the document from MinIO
+      const stream = await minioClient.getObject('documents', finalPath);
+
+      // Set appropriate headers
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `inline; filename="${finalPath.split('/').pop()}"`,
+      );
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+
+      // Pipe the stream to response
+      stream.pipe(res);
+
+      console.log('✅ Document served successfully:', finalPath);
+    } catch (error) {
+      console.error('❌ Error serving document:', error);
+
+      if (error.code === 'NoSuchKey') {
+        throw new NotFoundException(`Document not found: ${filename}`);
+      }
+
+      throw new BadRequestException(
+        `Failed to retrieve document: ${error.message}`,
+      );
+    }
   }
 
   /**************************************
